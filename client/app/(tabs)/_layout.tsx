@@ -1,5 +1,6 @@
-// import { COLORS } from '@/assets/constants';
-// import { useCart } from '@/context/CartContext';
+
+import { COLORS } from '@/constants/theme';
+import { useCart } from '@/src/context/CartContext';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
@@ -7,14 +8,15 @@ import { View } from 'react-native';
 
 export default function TabLayout() {
 
-  // const { cartItems } = useCart();
+  const { cartItems } = useCart();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#111111",
+        tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: '#CDCDE0',
+        tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 1,
@@ -31,11 +33,11 @@ export default function TabLayout() {
         tabBarIcon: ({ color, focused }) => (
           <View className='relative'>
             <Feather name={focused ? 'shopping-cart' : 'shopping-cart'} size={26} color={color} />
-            {/* {cartItems.length > 0 &&
+            {cartItems.length > 0 &&
               <View className='absolute -top-2 -right-2 bg-accent size-3 rounded-full justify-center items-center'>
                 <Ionicons name='ellipse' size={6} color="white" />
               </View>
-            } */}
+            }
           </View>
         )
       }} />
