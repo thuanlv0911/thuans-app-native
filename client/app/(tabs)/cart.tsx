@@ -1,6 +1,8 @@
 
+import AuthRequiredState from '@/src/components/AuthRequiredState';
 import CartItem from '@/src/components/CartItem';
 import Header from '@/src/components/Header';
+import { useAuth } from '@/src/context/AuthContext';
 import { useCart } from '@/src/context/CartContext';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -9,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Cart() {
 
+    const { isAuthenticated } = useAuth();
     const { cartItems, cartTotal, removeFromCart, updateQuantity } = useCart();
     const router = useRouter();
 
@@ -18,7 +21,12 @@ export default function Cart() {
     return (
         <SafeAreaView className='flex-1 bg-surface' edges={['top']}>
             <Header title='My Cart' showBack />
-            {cartItems.length > 0 ? (
+            {!isAuthenticated ? (
+                <AuthRequiredState
+                    title="Gio hang can dang nhap"
+                    description="Khach chua dang nhap chi duoc xem san pham. Dang nhap de them vao gio hang va thanh toan."
+                />
+            ) : cartItems.length > 0 ? (
                 <>
                     <ScrollView className='flex-1 px-4 mt-4'
                         showsVerticalScrollIndicator={false}>

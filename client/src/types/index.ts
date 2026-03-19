@@ -116,7 +116,7 @@ export interface Order {
 
 export type WishlistContextType = {
     wishlist: Product[];
-    toggleWishlist: (product: Product) => void;
+    toggleWishlist: (product: Product) => Promise<void>;
     isInWishlist: (productId: string) => boolean;
     loading: boolean;
 };
