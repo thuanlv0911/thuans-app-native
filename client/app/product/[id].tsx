@@ -1,48 +1,73 @@
-import { COLORS } from "@/constants/theme";
-import Header from "@/src/components/Header";
-import { dummyProducts } from "@/src/constants";
-import { useAuth } from "@/src/context/AuthContext";
-import { useCart } from "@/src/context/CartContext";
-import { Product } from "@/src/types";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Toast from "react-native-toast-message";
+
+import { COLORS } from '@/constants/theme';
+import { dummyProducts } from '@/src/constants';
+import { useAuth } from '@/src/context/AuthContext';
+import { useCart } from '@/src/context/CartContext';
+import { useWishlist } from '@/src/context/WishlistContext';
+import { Product } from '@/src/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+
+const { width } = Dimensions.get('window');
 
 export default function ProductDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, itemCount } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
 
-  const product = dummyProducts.find((item) => item._id === id) as Product | undefined;
 
-  const [selectedSize, setSelectedSize] = useState(product?.sizes?.[0] || "M");
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedSize, setSelectedSize] = useState<string>("M");
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  if (!product) {
+  useEffect(() => {
+    const found = dummyProducts.find((item) => item._id === id);
+    if (found) {
+      setProduct(found as Product);
+      setSelectedSize(found.sizes?.[0] || "M");
+    }
+    setLoading(false);
+
+  }, [id]);
+
+
+  if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-surface" edges={["top"]}>
-        <Header title="Product" showBack />
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-xl font-bold text-primary">Product not found</Text>
-          <TouchableOpacity
-            onPress={() => router.replace("/shop")}
-            className="mt-6 rounded-full bg-primary px-6 py-3"
-          >
-            <Text className="font-bold text-white">Back to shop</Text>
-          </TouchableOpacity>
-        </View>
+      <SafeAreaView className="flex-1 justify-center items-center bg-white">
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
   }
+
+  if (!product) {
+    return (
+      <SafeAreaView className="flex-1 bg-white justify-center items-center px-6">
+        <Text className="text-xl font-bold text-primary mb-4">The product does not exist</Text>
+        <TouchableOpacity
+          onPress={() => router.replace("/shop")}
+          className="bg-primary px-8 py-4 rounded-full"
+        >
+          <Text className="text-white font-bold">Return to the shop</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  const isLiked = isInWishlist(product._id);
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
       Toast.show({
         type: "info",
-        text1: "Can dang nhap",
-        text2: "Dang nhap de them san pham vao gio hang.",
+        text1: "Login required",
+        text2: "Log in to add products to your cart."
       });
       router.push("/sign-in");
       return;
@@ -51,62 +76,177 @@ export default function ProductDetails() {
     await addToCart(product, selectedSize);
     Toast.show({
       type: "success",
-      text1: "Da them vao gio hang",
+      text1: "Added to cart",
       text2: `${product.name} (${selectedSize})`,
     });
   };
 
+  const handleToggleWishlist = () => {
+    if (!isAuthenticated) {
+      Toast.show({
+        type: "info",
+        text1: "Login required",
+        text2: "Log in to add to favorites list."
+      });
+      router.push("/sign-in");
+      return;
+    }
+
+    toggleWishlist(product);
+    Toast.show({
+      type: "success",
+      text1: isLiked ? "Unliked" : "Added to favorites",
+      text2: product.name,
+    });
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={["top"]}>
-      <Header title="Product" showBack showCart />
+    <View className="flex-1 bg-white">
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* img */}
+        <View className="relative h-[450px] bg-gray-100">
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={(e) => {
+              const slide = Math.round(e.nativeEvent.contentOffset.x / width);
+              setActiveImageIndex(slide);
+            }}
+            scrollEventThrottle={16}
+          >
+            {product.images?.map((img, index) => (
+              <Image
+                key={index}
+                source={{ uri: img }}
+                style={{ width, height: 450 }}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <Image
-          source={{ uri: product.images?.[0] ?? "" }}
-          className="h-96 w-full bg-gray-100"
-          resizeMode="cover"
-        />
+          {/* back & wishlist */}
+          <View className="absolute top-12 left-4 right-4 flex-row justify-between z-10">
+            <TouchableOpacity
+              onPress={() => router.back()}
+              className="w-10 h-10 bg-white/80 rounded-full items-center justify-center shadow-sm"
+            >
+              <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
 
-        <View className="rounded-t-3xl bg-white px-5 py-6">
-          <Text className="text-3xl font-bold text-primary">{product.name}</Text>
-          <Text className="mt-3 text-2xl font-bold text-primary">${product.price.toFixed(2)}</Text>
-          <Text className="mt-4 text-base leading-6 text-secondary">{product.description}</Text>
+            <TouchableOpacity
+              onPress={handleToggleWishlist}
+              className="w-10 h-10 bg-white/80 rounded-full items-center justify-center shadow-sm"
+            >
+              <Ionicons
+                name={isLiked ? "heart" : "heart-outline"}
+                size={24}
+                color={isLiked ? COLORS.accent || "#ef4444" : COLORS.primary}
+              />
+            </TouchableOpacity>
+          </View>
 
-          <View className="mt-6">
-            <Text className="text-sm font-semibold uppercase tracking-[1px] text-gray-500">Size</Text>
-            <View className="mt-3 flex-row flex-wrap gap-3">
-              {(product.sizes?.length ? product.sizes : ["M"]).map((size) => (
-                <TouchableOpacity
-                  key={size}
-                  onPress={() => setSelectedSize(size)}
-                  className={`rounded-full border px-4 py-3 ${selectedSize === size ? "border-primary bg-primary" : "border-gray-300 bg-white"}`}
-                >
-                  <Text className={`font-semibold ${selectedSize === size ? "text-white" : "text-primary"}`}>
-                    {size}
-                  </Text>
-                </TouchableOpacity>
+          {/* Pagination dots */}
+          {product.images && product.images.length > 1 && (
+            <View className="absolute bottom-6 left-0 right-0 flex-row justify-center gap-2">
+              {product.images.map((_, index) => (
+                <View
+                  key={index}
+                  className={`h-2.5 rounded-full transition-all ${index === activeImageIndex ? 'w-6 bg-primary' : 'w-2.5 bg-gray-300'
+                    }`}
+                />
               ))}
+            </View>
+          )}
+        </View>
+
+        {/* in4 prod */}
+        <View className="px-5 pt-6 pb-10">
+          <View className="flex-row justify-between items-start mb-4">
+            <Text className="text-3xl font-bold text-primary flex-1 pr-4">{product.name}</Text>
+            <View className="flex-row items-center">
+              <Ionicons name="star" size={18} color="#FFD700" />
+              <Text className="ml-1 font-bold text-base text-primary">
+                {product.ratings.average.toFixed(1)}
+              </Text>
+              <Text className="ml-1 text-gray-500 text-sm">
+                ({product.ratings.count})
+              </Text>
             </View>
           </View>
 
-          <View className="mt-8 rounded-2xl bg-gray-50 p-4">
-            <Text className="text-base text-primary">Stock: {product.stock}</Text>
-            <Text className="mt-2 text-base text-primary">Rating: {product.ratings.average.toFixed(1)}</Text>
-            <Text className="mt-2 text-base text-primary">Category: {typeof product.category === "string" ? product.category : product.category.name}</Text>
+          <Text className="text-3xl font-bold text-primary mb-6">
+            ${product.price.toFixed(2)}
+          </Text>
+
+          {/* Size selector */}
+          {product.sizes && product.sizes.length > 0 && (
+            <View className="mb-8">
+              <Text className="text-base font-bold text-primary mb-3">Size</Text>
+              <View className="flex-row flex-wrap gap-3">
+                {product.sizes.map((size) => (
+                  <TouchableOpacity
+                    key={size}
+                    onPress={() => setSelectedSize(size)}
+                    className={`w-14 h-14 rounded-2xl border-2 items-center justify-center ${selectedSize === size
+                      ? 'bg-primary border-primary'
+                      : 'bg-white border-gray-200'
+                      }`}
+                  >
+                    <Text
+                      className={`text-base font-medium ${selectedSize === size ? 'text-white' : 'text-primary'
+                        }`}
+                    >
+                      {size}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Description */}
+          <Text className="text-base font-bold text-primary mb-3">Description</Text>
+          <Text className="text-gray-600 leading-7 mb-8">{product.description}</Text>
+
+          {/* more */}
+          <View className="bg-gray-50 rounded-2xl p-5">
+            <Text className="text-base text-primary mb-2">
+              Stock: <Text className="font-bold">{product.stock}</Text>
+            </Text>
+            <Text className="text-base text-primary mb-2">
+              Category: <Text className="font-medium">{product.category.toString()}</Text>
+            </Text>
           </View>
         </View>
       </ScrollView>
 
-      <View className="border-t border-gray-100 bg-white px-5 py-4">
+      {/* Footer fixed */}
+      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 flex-row items-center">
         <TouchableOpacity
           onPress={handleAddToCart}
-          className="items-center rounded-full bg-primary py-4"
+          className={`flex-1 py-4 rounded-full items-center shadow-md flex-row justify-center ${!isAuthenticated ? 'bg-gray-400' : 'bg-primary'
+            }`}
+          disabled={!isAuthenticated}
         >
-          <Text className="text-lg font-bold text-white">
-            {isAuthenticated ? "Add to cart" : "Login to add to cart"}
+          <Ionicons name="bag-outline" size={22} color="white" />
+          <Text className="text-white font-bold text-base ml-3">
+            {isAuthenticated ? "Add to cart" : "Log in to buy"}
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/cart")}
+          className="ml-4 w-14 h-14 bg-gray-100 rounded-full items-center justify-center relative"
+        >
+          <Ionicons name="cart-outline" size={26} color={COLORS.primary} />
+          {itemCount > 0 && (
+            <View className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[20px] h-5 items-center justify-center px-1">
+              <Text className="text-white text-xs font-bold">{itemCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
