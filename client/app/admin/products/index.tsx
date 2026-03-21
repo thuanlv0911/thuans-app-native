@@ -1,6 +1,7 @@
 
 import { COLORS } from "@/constants/theme";
-import { dummyProducts } from "@/src/constants";
+import { useAuth } from "@/src/context/AuthContext";
+import { apiRequest } from "@/src/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -8,14 +9,19 @@ import { ActivityIndicator, Alert, Image, RefreshControl, ScrollView, Text, Touc
 
 export default function AdminProducts() {
     const router = useRouter();
+    const { token } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [products, setProducts] = useState([]);
 
     const fetchProducts = async () => {
-        setProducts(dummyProducts as any);
-        setLoading(false);
-        setRefreshing(false);
+        try {
+            const data = await apiRequest<{ products: any[] }>('/products?limit=100', { token });
+            setProducts(data.products || []);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
     };
 
     useEffect(() => {
@@ -28,7 +34,11 @@ export default function AdminProducts() {
     };
 
     const performDelete = async (id: string) => {
-        setProducts(products.filter((product: any) => product._id !== id) as any);
+        await apiRequest(`/products/${id}`, {
+            method: "DELETE",
+            token,
+        });
+        await fetchProducts();
     };
 
     const deleteProduct = async (id: string) => {

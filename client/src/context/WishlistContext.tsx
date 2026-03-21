@@ -1,14 +1,14 @@
 
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { Product, WishlistContextType } from "../types";
-import { dummyWishlist } from "../constants";
 import { useAuth } from "./AuthContext";
 import Toast from "react-native-toast-message";
+import { apiRequest } from "../services/api";
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated, token, user } = useAuth();
 
     const [wishlist, setWishlist] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
@@ -21,8 +21,18 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         }
 
         setLoading(true);
-        setWishlist(dummyWishlist);
-        setLoading(false);
+        try {
+            const data = await apiRequest<{ products: Product[] }>("/wishlist", { token });
+            setWishlist(data.products || []);
+        } catch (error) {
+            Toast.show({
+                type: "error",
+                text1: "Khong tai duoc wishlist",
+                text2: error instanceof Error ? error.message : "Vui long thu lai sau.",
+            });
+        } finally {
+            setLoading(false);
+        }
     }
 
     const toggleWishlist = async (product: Product) => {
@@ -35,14 +45,13 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        setWishlist((prev) => {
-            const exists = prev.some((p) => p._id === product._id);
+        const data = await apiRequest<{ products: Product[] }>("/wishlist/toggle", {
+            method: "POST",
+            token,
+            body: { productId: product._id },
+        });
 
-            if (exists) {
-                return prev.filter((p) => p._id !== product._id);
-            }
-            return [...prev, product];
-        })
+        setWishlist(data.products || []);
     }
     const isInWishlist = (productId: string) => {
         return wishlist.some((p) => p._id === productId);

@@ -1,16 +1,18 @@
 
 import { CATEGORIES, COLORS } from "@/constants/theme";
-import { dummyProducts } from "@/src/constants";
+import { useAuth } from "@/src/context/AuthContext";
+import { apiRequest } from "@/src/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Modal, Platform, ScrollView, Switch, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import Toast from 'react-native-toast-message';
 
 export default function EditProduct() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
+    const { token } = useAuth();
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -32,7 +34,8 @@ export default function EditProduct() {
     useEffect(() => {
         const fetchProduct = async () => {
             try {
-                const product: any = dummyProducts.find((p) => p._id === id);
+                const data = await apiRequest<{ product: any }>(`/products/${id}`, { token });
+                const product = data.product;
                 setName(product.name);
                 setDescription(product.description || "");
                 setPrice(product.price.toString());
@@ -52,7 +55,7 @@ export default function EditProduct() {
                 Toast.show({
                     type: 'error',
                     text1: 'Failed to Fetch Product',
-                    text2: error.response?.data?.message || "Something went wrong"
+                    text2: error instanceof Error ? error.message : "Something went wrong"
                 });
                 router.back();
             } finally {
@@ -61,7 +64,7 @@ export default function EditProduct() {
         };
 
         if (id) fetchProduct();
-    }, [id]);
+    }, [id, token]);
 
     const pickImages = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -73,7 +76,7 @@ export default function EditProduct() {
 
         if (!result.canceled) {
             const uris = result.assets.map((asset) => asset.uri);
-            setNewImages([...newImages, ...uris]);
+            setNewImages((prev) => [...prev, ...uris]);
         }
     };
 
@@ -90,49 +93,43 @@ export default function EditProduct() {
     };
 
     const handleSubmit = async () => {
-        if (!name || !price || sizes.length < 1) {
+        if (!name || !price || sizes.length < 1 || existingImages.length + newImages.length === 0) {
             Toast.show({
                 type: 'error',
                 text1: 'Missing Fields',
-                text2: 'Please fill in all required fields'
+                text2: 'Please fill in all required fields and keep at least one image.'
             });
             return;
         }
 
         try {
             setSubmitting(true);
-            const formData = new FormData();
-
-            formData.append("name", name);
-            formData.append("description", description);
-            formData.append("price", price);
-            formData.append("stock", stock);
-            formData.append("category", category);
-            formData.append("isFeatured", String(isFeatured));
-            formData.append("sizes", sizes);
-
-            // Append existing images
-            existingImages.forEach((img) => {
-                formData.append("existingImages", img);
+            await apiRequest(`/products/${id}`, {
+                method: 'PUT',
+                token,
+                body: {
+                    name,
+                    description,
+                    price: Number(price),
+                    stock: Number(stock || 0),
+                    category,
+                    isFeatured,
+                    sizes: sizes.split(',').map((item) => item.trim()).filter(Boolean),
+                    images: [...existingImages, ...newImages],
+                },
             });
 
-            // Append new images
-            for (const [i, uri] of newImages.entries()) {
-                const filename = `new-image-${i}.jpg`;
-                if (Platform.OS === "web") {
-                    const blob = await (await fetch(uri)).blob();
-                    formData.append("images", new File([blob], filename, { type: "image/jpeg" }));
-                } else {
-                    formData.append("images", { uri, name: filename, type: "image/jpeg" } as any);
-                }
-            }
+            Toast.show({
+                type: 'success',
+                text1: 'Product updated',
+            });
             router.back();
         } catch (error: any) {
             console.error("Failed to update product:", error);
             Toast.show({
                 type: 'error',
                 text1: 'Failed to Update Product',
-                text2: error.response?.data?.message || "Something went wrong"
+                text2: error instanceof Error ? error.message : "Something went wrong"
             });
         } finally {
             setSubmitting(false);

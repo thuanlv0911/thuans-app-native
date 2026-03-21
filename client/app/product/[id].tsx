@@ -1,9 +1,8 @@
-
 import { COLORS } from '@/constants/theme';
-import { dummyProducts } from '@/src/constants';
 import { useAuth } from '@/src/context/AuthContext';
 import { useCart } from '@/src/context/CartContext';
 import { useWishlist } from '@/src/context/WishlistContext';
+import { apiRequest } from '@/src/services/api';
 import { Product } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -21,22 +20,28 @@ export default function ProductDetails() {
   const { addToCart, itemCount } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
-
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedSize, setSelectedSize] = useState<string>("M");
+  const [selectedSize, setSelectedSize] = useState<string>('M');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
-    const found = dummyProducts.find((item) => item._id === id);
-    if (found) {
-      setProduct(found as Product);
-      setSelectedSize(found.sizes?.[0] || "M");
+    const fetchProduct = async () => {
+      try {
+        const data = await apiRequest<{ product: Product }>(`/products/${id}`);
+        setProduct(data.product);
+        setSelectedSize(data.product?.sizes?.[0] || 'M');
+      } catch (error) {
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchProduct();
     }
-    setLoading(false);
-
   }, [id]);
-
 
   if (loading) {
     return (
@@ -81,7 +86,7 @@ export default function ProductDetails() {
     });
   };
 
-  const handleToggleWishlist = () => {
+  const handleToggleWishlist = async () => {
     if (!isAuthenticated) {
       Toast.show({
         type: "info",
@@ -92,10 +97,10 @@ export default function ProductDetails() {
       return;
     }
 
-    toggleWishlist(product);
+    await toggleWishlist(product);
     Toast.show({
       type: "success",
-      text1: isLiked ? "Unliked" : "Added to favorites",
+      text1: isLiked ? "Removed from wishlist" : "Added to wishlist",
       text2: product.name,
     });
   };
@@ -103,7 +108,6 @@ export default function ProductDetails() {
   return (
     <View className="flex-1 bg-white">
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        {/* img */}
         <View className="relative h-[450px] bg-gray-100">
           <ScrollView
             horizontal
@@ -125,7 +129,6 @@ export default function ProductDetails() {
             ))}
           </ScrollView>
 
-          {/* back & wishlist */}
           <View className="absolute top-12 left-4 right-4 flex-row justify-between z-10">
             <TouchableOpacity
               onPress={() => router.back()}
@@ -146,40 +149,27 @@ export default function ProductDetails() {
             </TouchableOpacity>
           </View>
 
-          {/* Pagination dots */}
           {product.images && product.images.length > 1 && (
             <View className="absolute bottom-6 left-0 right-0 flex-row justify-center gap-2">
               {product.images.map((_, index) => (
                 <View
                   key={index}
-                  className={`h-2.5 rounded-full transition-all ${index === activeImageIndex ? 'w-6 bg-primary' : 'w-2.5 bg-gray-300'
-                    }`}
+                  className={`h-2.5 rounded-full ${index === activeImageIndex ? 'w-6 bg-primary' : 'w-2.5 bg-gray-300'}`}
                 />
               ))}
             </View>
           )}
         </View>
 
-        {/* in4 prod */}
         <View className="px-5 pt-6 pb-10">
           <View className="flex-row justify-between items-start mb-4">
             <Text className="text-3xl font-bold text-primary flex-1 pr-4">{product.name}</Text>
-            <View className="flex-row items-center">
-              <Ionicons name="star" size={18} color="#FFD700" />
-              <Text className="ml-1 font-bold text-base text-primary">
-                {product.ratings.average.toFixed(1)}
-              </Text>
-              <Text className="ml-1 text-gray-500 text-sm">
-                ({product.ratings.count})
-              </Text>
-            </View>
           </View>
 
           <Text className="text-3xl font-bold text-primary mb-6">
             ${product.price.toFixed(2)}
           </Text>
 
-          {/* Size selector */}
           {product.sizes && product.sizes.length > 0 && (
             <View className="mb-8">
               <Text className="text-base font-bold text-primary mb-3">Size</Text>
@@ -188,15 +178,9 @@ export default function ProductDetails() {
                   <TouchableOpacity
                     key={size}
                     onPress={() => setSelectedSize(size)}
-                    className={`w-14 h-14 rounded-2xl border-2 items-center justify-center ${selectedSize === size
-                      ? 'bg-primary border-primary'
-                      : 'bg-white border-gray-200'
-                      }`}
+                    className={`w-14 h-14 rounded-2xl border-2 items-center justify-center ${selectedSize === size ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}
                   >
-                    <Text
-                      className={`text-base font-medium ${selectedSize === size ? 'text-white' : 'text-primary'
-                        }`}
-                    >
+                    <Text className={`text-base font-medium ${selectedSize === size ? 'text-white' : 'text-primary'}`}>
                       {size}
                     </Text>
                   </TouchableOpacity>
@@ -205,29 +189,24 @@ export default function ProductDetails() {
             </View>
           )}
 
-          {/* Description */}
           <Text className="text-base font-bold text-primary mb-3">Description</Text>
           <Text className="text-gray-600 leading-7 mb-8">{product.description}</Text>
 
-          {/* more */}
           <View className="bg-gray-50 rounded-2xl p-5">
             <Text className="text-base text-primary mb-2">
               Stock: <Text className="font-bold">{product.stock}</Text>
             </Text>
             <Text className="text-base text-primary mb-2">
-              Category: <Text className="font-medium">{product.category.toString()}</Text>
+              Category: <Text className="font-medium">{typeof product.category === 'string' ? product.category : product.category.name}</Text>
             </Text>
           </View>
         </View>
       </ScrollView>
 
-      {/* Footer fixed */}
       <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 flex-row items-center">
         <TouchableOpacity
           onPress={handleAddToCart}
-          className={`flex-1 py-4 rounded-full items-center shadow-md flex-row justify-center ${!isAuthenticated ? 'bg-gray-400' : 'bg-primary'
-            }`}
-          disabled={!isAuthenticated}
+          className="flex-1 py-4 rounded-full items-center shadow-md flex-row justify-center bg-primary"
         >
           <Ionicons name="bag-outline" size={22} color="white" />
           <Text className="text-white font-bold text-base ml-3">

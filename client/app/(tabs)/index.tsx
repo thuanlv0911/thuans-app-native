@@ -2,7 +2,8 @@ import { CATEGORIES } from '@/constants/theme';
 import CategoryItem from '@/src/components/CategoryItem';
 import Header from '@/src/components/Header';
 import ProductCard from '@/src/components/ProductCard';
-import { BANNERS, dummyProducts } from '@/src/constants';
+import { BANNERS } from '@/src/constants';
+import { apiRequest } from '@/src/services/api';
 import { Product } from '@/src/types';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -16,13 +17,32 @@ export default function Home() {
   const router = useRouter();
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const categories = [{ id: 'all', name: 'All', icon: "grid" }, ...CATEGORIES];
-
   const fetchProducts = async () => {
-    setProducts(dummyProducts);
-    setLoading(false);
+    try {
+      const [productsData, categoriesData] = await Promise.all([
+        apiRequest<{ products: Product[] }>('/products?featured=true&limit=4'),
+        apiRequest<{ categories: string[] }>('/products/categories'),
+      ]);
+
+      setProducts(productsData.products || []);
+      setCategories([
+        { id: 'all', name: 'All', icon: 'grid' },
+        ...(categoriesData.categories || []).map((categoryName, index) => {
+          const matchedCategory = CATEGORIES.find((item) => item.name.toLowerCase() === categoryName.toLowerCase());
+
+          return {
+            id: `${categoryName}-${index}`,
+            name: categoryName,
+            icon: matchedCategory?.icon || 'grid-outline',
+          };
+        }),
+      ]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

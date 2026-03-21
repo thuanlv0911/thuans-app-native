@@ -29,10 +29,6 @@ export interface Product {
     }
     | string;
     stock: number;
-    ratings: {
-        average: number;
-        count: number;
-    };
     isFeatured: boolean;
     isActive: boolean;
     createdAt: string;

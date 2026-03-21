@@ -1,7 +1,10 @@
 
 import { COLORS, getStatusColor } from "@/constants/theme";
+import AuthRequiredState from "@/src/components/AuthRequiredState";
 import Header from "@/src/components/Header";
-import { dummyOrders, formatDate } from "@/src/constants";
+import { formatDate } from "@/src/constants";
+import { useAuth } from "@/src/context/AuthContext";
+import { apiRequest } from "@/src/services/api";
 import { Order } from "@/src/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -11,23 +14,38 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Orders() {
     const router = useRouter();
+    const { isAuthenticated, token } = useAuth();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchOrders = async () => {
-        setOrders(dummyOrders as any[]);
-        setLoading(false);
+        try {
+            const data = await apiRequest<{ orders: Order[] }>('/orders', { token });
+            setOrders(data.orders || []);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            setLoading(false);
+            return;
+        }
+
         fetchOrders();
-    }, []);
+    }, [isAuthenticated]);
 
     return (
         <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
             <Header title="My Orders" showBack />
 
-            {loading ? (
+            {!isAuthenticated ? (
+                <AuthRequiredState
+                    title="Order can dang nhap"
+                    description="Dang nhap de xem don hang va lich su mua sam cua ban."
+                />
+            ) : loading ? (
                 <View className="flex-1 justify-center items-center">
                     <ActivityIndicator size="large" color={COLORS.primary} />
                 </View>
@@ -74,7 +92,7 @@ export default function Orders() {
                             {/* Product Images */}
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
                                 {item.items.map((prod: any, idx) => {
-                                    const image = prod.product?.images?.[0];
+                                    const image = prod.image || prod.product?.images?.[0];
                                     return (
                                         <View key={idx} className="mr-3 border border-gray-100 rounded-md p-1 bg-gray-50">
                                             {image ? (

@@ -1,7 +1,9 @@
 
 import { COLORS } from "@/constants/theme";
+import AuthRequiredState from "@/src/components/AuthRequiredState";
 import Header from "@/src/components/Header";
-import { dummyOrders } from "@/src/constants";
+import { useAuth } from "@/src/context/AuthContext";
+import { apiRequest } from "@/src/services/api";
 import { Order, Product } from "@/src/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
@@ -11,17 +13,39 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function OrderDetails() {
     const { id } = useLocalSearchParams();
+    const { isAuthenticated, token } = useAuth();
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchOrderDetails = async () => {
-        setOrder(dummyOrders.find((order) => order._id === id) as any);
-        setLoading(false);
+        try {
+            const data = await apiRequest<{ order: Order }>(`/orders/${id}`, { token });
+            setOrder(data.order);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            setLoading(false);
+            return;
+        }
+
         fetchOrderDetails();
-    }, [id]);
+    }, [id, isAuthenticated]);
+
+    if (!isAuthenticated) {
+        return (
+            <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+                <Header title="Order Detail" showBack />
+                <AuthRequiredState
+                    title="Order detail can dang nhap"
+                    description="Dang nhap de xem chi tiet don hang cua ban."
+                />
+            </SafeAreaView>
+        );
+    }
 
     if (loading) {
         return (
@@ -54,7 +78,6 @@ export default function OrderDetails() {
     return (
         <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
             <Header title={`Order #${order.orderNumber}`} showBack />
-
             <ScrollView className="flex-1 px-4 pt-4">
                 {/* Order Status */}
                 <View className="bg-white p-4 rounded-xl mb-4 border border-gray-100">
@@ -82,7 +105,7 @@ export default function OrderDetails() {
                     {order.items.map((item: any, index: number) => {
 
                         const productData = item.product as Product;
-                        const image = productData?.images?.[0];
+                        const image = item.image || productData?.images?.[0];
 
                         return (
                             <View key={index} className={`flex-row ${index !== order.items.length - 1 && 'border-b border-gray-100 pb-4 mb-4'}`}>

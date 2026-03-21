@@ -1,10 +1,12 @@
 import { COLORS, getStatusColor } from "@/constants/theme";
-import { dummyOrders, dummyUser } from "@/src/constants";
+import { useAuth } from "@/src/context/AuthContext";
+import { apiRequest } from "@/src/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 
 export default function AdminOrders() {
+    const { token } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [orders, setOrders] = useState([]);
@@ -17,17 +19,22 @@ export default function AdminOrders() {
     const STATUSES = ["placed", "processing", "shipped", "delivered", "cancelled"];
 
     const fetchOrders = async () => {
-        setOrders(dummyOrders.map((order: any) => ({
-            ...order,
-            user: dummyUser
-        })) as any);
-        setLoading(false);
-        setRefreshing(false);
+        try {
+            const data = await apiRequest<{ orders: any[] }>("/admin/orders", { token });
+            setOrders(data.orders as any);
+        } catch (error) {
+            console.error("Failed to fetch admin orders:", error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
     };
 
     useEffect(() => {
-        fetchOrders();
-    }, []);
+        if (token) {
+            fetchOrders();
+        }
+    }, [token]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -41,9 +48,27 @@ export default function AdminOrders() {
 
     const updateStatus = async (newStatus: string) => {
         if (!selectedOrder) return;
-        setOrders(orders.map((order: any) => order._id === selectedOrder._id ? { ...order, orderStatus: newStatus } : order) as any);
-        setStatusModalVisible(false);
-        setUpdating(false);
+        setUpdating(true);
+
+        try {
+            const data = await apiRequest<{ order: any }>(`/admin/orders/${selectedOrder._id}/status`, {
+                method: "PATCH",
+                token,
+                body: { orderStatus: newStatus },
+            });
+
+            setOrders(
+                orders.map((order: any) =>
+                    order._id === selectedOrder._id ? data.order : order
+                ) as any
+            );
+            setSelectedOrder(data.order);
+            setStatusModalVisible(false);
+        } catch (error) {
+            console.error("Failed to update order status:", error);
+        } finally {
+            setUpdating(false);
+        }
     };
 
     if (loading && !refreshing) {

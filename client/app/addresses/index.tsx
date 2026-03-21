@@ -1,10 +1,10 @@
 
 import { COLORS } from "@/constants/theme";
+import AuthRequiredState from "@/src/components/AuthRequiredState";
 import Header from "@/src/components/Header";
-import { dummyAddress } from "@/src/constants";
-import { Address } from "@/src/types";
-import { API_BASE_URL } from "@/src/config/api";
 import { useAuth } from "@/src/context/AuthContext";
+import { apiRequest } from "@/src/services/api";
+import { Address } from "@/src/types";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -28,28 +28,25 @@ export default function Addresses() {
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
 
-    const { user } = useAuth();
+    const { token, isAuthenticated } = useAuth();
 
     const fetchAddresses = useCallback(async () => {
         setLoading(true);
         try {
-            if (!user?.id) {
-                setAddresses(dummyAddress as any);
+            if (!token) {
+                setAddresses([]);
                 return;
             }
 
-            const response = await fetch(`${API_BASE_URL}/addresses?userId=${user.id}`);
-            if (!response.ok) throw new Error('Failed to fetch addresses');
-
-            const data = await response.json();
+            const data = await apiRequest<{ addresses: Address[] }>('/addresses', { token });
             setAddresses(data.addresses ?? []);
         } catch (error) {
             console.warn('fetchAddresses:', error);
-            setAddresses(dummyAddress as any);
+            setAddresses([]);
         } finally {
             setLoading(false);
         }
-    }, [user]);
+    }, [token]);
 
     useEffect(() => {
         fetchAddresses();
@@ -76,7 +73,6 @@ export default function Addresses() {
         setSubmitting(true);
         try {
             const payload = {
-                userId: user?.id,
                 type,
                 thonToDanPho,
                 xaPhuong,
@@ -85,18 +81,11 @@ export default function Addresses() {
                 isDefault,
             };
 
-            const url = editingId ? `${API_BASE_URL}/addresses/${editingId}` : `${API_BASE_URL}/addresses`;
-            const method = editingId ? 'PUT' : 'POST';
-            const response = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+            await apiRequest(editingId ? `/addresses/${editingId}` : '/addresses', {
+                method: editingId ? 'PUT' : 'POST',
+                token,
+                body: payload,
             });
-
-            if (!response.ok) {
-                const errorBody = await response.text();
-                throw new Error(errorBody || 'Address save failed');
-            }
 
             setModalVisible(false);
             resetForm();
@@ -111,12 +100,10 @@ export default function Addresses() {
 
     const handleDeleteAddress = async (id: string) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/addresses/${id}`, {
+            await apiRequest(`/addresses/${id}`, {
                 method: 'DELETE',
+                token,
             });
-            if (!response.ok) {
-                throw new Error('Delete failed');
-            }
             await fetchAddresses();
         } catch (error) {
             console.error('handleDeleteAddress:', error);
@@ -144,7 +131,12 @@ export default function Addresses() {
         <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
             <Header title="Shipping Addresses" showBack />
 
-            {loading ? (
+            {!isAuthenticated ? (
+                <AuthRequiredState
+                    title="Address can dang nhap"
+                    description="Dang nhap de luu va quan ly dia chi giao hang cua ban."
+                />
+            ) : loading ? (
                 <View className="flex-1 justify-center items-center">
                     <ActivityIndicator size="large" color={COLORS.primary} />
                 </View>
