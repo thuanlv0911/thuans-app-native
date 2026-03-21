@@ -72,11 +72,10 @@ export type HeaderProps = {
 export interface Address {
     _id: string;
     type: "Home" | "Work" | "Other";
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
+    thonToDanPho: string;
+    xaPhuong: string;
+    quanHuyen?: string;
+    tinhThanh: string;
     isDefault: boolean;
     createdAt: string;
 }
@@ -96,11 +95,10 @@ export interface Order {
     orderNumber: string;
     items: OrderItem[];
     shippingAddress: {
-        street: string;
-        city: string;
-        state: string;
-        zipCode: string;
-        country: string;
+        thonToDanPho: string;
+        xaPhuong: string;
+        quanHuyen?: string;
+        tinhThanh: string;
     };
     paymentMethod: string;
     paymentStatus: "pending" | "paid" | "failed" | "refunded";

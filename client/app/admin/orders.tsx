@@ -82,10 +82,11 @@ export default function AdminOrders() {
                             <View className="mb-3 bg-gray-50 p-3 rounded-lg">
                                 <Text className="text-xs text-secondary font-bold mb-1">SHIPPING ADDRESS</Text>
                                 <Text className="text-primary text-xs">
-                                    {order.shippingAddress?.street}, {order.shippingAddress?.city}
+                                    {order.shippingAddress?.thonToDanPho}, {order.shippingAddress?.xaPhuong}
+                                    {order.shippingAddress?.quanHuyen ? `, ${order.shippingAddress.quanHuyen}` : ''}
                                 </Text>
                                 <Text className="text-primary text-xs">
-                                    {order.shippingAddress?.state}, {order.shippingAddress?.zipCode}, {order.shippingAddress?.country}
+                                    {order.shippingAddress?.tinhThanh}
                                 </Text>
                             </View>
 

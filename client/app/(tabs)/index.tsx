@@ -103,8 +103,8 @@ export default function Home() {
         <View className='bg-gray-100 p-6 rounded-2xl mb-20 items-center'>
           <Text className='text-2xl font-bold text-primary mb-2 text-center'>Join in Revolution</Text>
           <Text className='text-secondary text-center mb-4'>Subscribe to our newsletter and get 10% off your first purchase.</Text>
-          <TouchableOpacity className='bg-primary w-4/5 py-3 rounded-full items-center'>
-            <Text className='text-white font-medium text-base'>Subscribe Now</Text>
+          <TouchableOpacity onPress={() => router.push("/sign-up")} className='bg-primary w-4/5 py-3 rounded-full items-center'>
+            <Text className='text-white font-medium text-base'>Register Now</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

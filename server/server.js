@@ -17,6 +17,7 @@ app.get("/", async (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/addresses", require("./routes/address.routes"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

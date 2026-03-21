@@ -22,14 +22,14 @@ export default function AuthRequiredState({ title, description }: AuthRequiredSt
         onPress={() => router.push("/sign-in")}
         className="mt-8 w-full items-center rounded-full bg-primary py-4"
       >
-        <Text className="text-base font-bold text-white">Dang nhap</Text>
+        <Text className="text-base font-bold text-white">Login</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         onPress={() => router.push("/sign-up")}
         className="mt-4 w-full items-center rounded-full border border-gray-300 py-4"
       >
-        <Text className="text-base font-semibold text-primary">Dang ky</Text>
+        <Text className="text-base font-semibold text-primary">Register</Text>
       </TouchableOpacity>
     </View>
   );

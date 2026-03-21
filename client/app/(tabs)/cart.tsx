@@ -20,11 +20,11 @@ export default function Cart() {
 
     return (
         <SafeAreaView className='flex-1 bg-surface' edges={['top']}>
-            <Header title='My Cart' showBack />
+            <Header title='My Cart' showMenu showCart />
             {!isAuthenticated ? (
                 <AuthRequiredState
-                    title="Gio hang can dang nhap"
-                    description="Khach chua dang nhap chi duoc xem san pham. Dang nhap de them vao gio hang va thanh toan."
+                    title="Login to view your shopping cart."
+                    description="You must be logged in to view your shopping cart. Please log in to add items to your cart and proceed to checkout."
                 />
             ) : cartItems.length > 0 ? (
                 <>
