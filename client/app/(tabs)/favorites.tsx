@@ -19,8 +19,8 @@ export default function Favorites() {
             <Header title='Wishlist' showMenu showCart />
             {!isAuthenticated ? (
                 <AuthRequiredState
-                    title="Wishlist can dang nhap"
-                    description="Ban van co the xem san pham, nhung can dang nhap de luu wishlist cua rieng minh."
+                    title="Login to view your wishlist."
+                    description="You must be logged in to view your wishlist. Please log in to add items to your wishlist."
                 />
             ) : wishlist.length > 0 ? (
                 <ScrollView className='flex-1 px-4 mt-4'

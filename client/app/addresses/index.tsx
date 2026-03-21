@@ -3,8 +3,10 @@ import { COLORS } from "@/constants/theme";
 import Header from "@/src/components/Header";
 import { dummyAddress } from "@/src/constants";
 import { Address } from "@/src/types";
+import { API_BASE_URL } from "@/src/config/api";
+import { useAuth } from "@/src/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -15,11 +17,10 @@ export default function Addresses() {
 
     // Form state
     const [type, setType] = useState("Home");
-    const [street, setStreet] = useState("");
-    const [city, setCity] = useState("");
-    const [state, setState] = useState("");
-    const [zipCode, setZipCode] = useState("");
-    const [country, setCountry] = useState("");
+    const [thonToDanPho, setThonToDanPho] = useState("");
+    const [xaPhuong, setXaPhuong] = useState("");
+    const [quanHuyen, setQuanHuyen] = useState("");
+    const [tinhThanh, setTinhThanh] = useState("");
     const [isDefault, setIsDefault] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
@@ -27,44 +28,107 @@ export default function Addresses() {
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
 
+    const { user } = useAuth();
+
+    const fetchAddresses = useCallback(async () => {
+        setLoading(true);
+        try {
+            if (!user?.id) {
+                setAddresses(dummyAddress as any);
+                return;
+            }
+
+            const response = await fetch(`${API_BASE_URL}/addresses?userId=${user.id}`);
+            if (!response.ok) throw new Error('Failed to fetch addresses');
+
+            const data = await response.json();
+            setAddresses(data.addresses ?? []);
+        } catch (error) {
+            console.warn('fetchAddresses:', error);
+            setAddresses(dummyAddress as any);
+        } finally {
+            setLoading(false);
+        }
+    }, [user]);
+
     useEffect(() => {
         fetchAddresses();
-    }, []);
-
-    const fetchAddresses = async () => {
-        setAddresses(dummyAddress as any);
-        setLoading(false);
-    };
+    }, [fetchAddresses]);
 
     const handleEditSearch = (item: Address) => {
         setIsEditing(true);
         setEditingId(item._id);
         setType(item.type);
-        setStreet(item.street);
-        setCity(item.city);
-        setState(item.state);
-        setZipCode(item.zipCode);
-        setCountry(item.country);
+        setThonToDanPho(item.thonToDanPho);
+        setXaPhuong(item.xaPhuong);
+        setQuanHuyen(item.quanHuyen || '');
+        setTinhThanh(item.tinhThanh);
         setIsDefault(item.isDefault);
         setModalVisible(true);
     };
 
     const handleSaveAddress = async () => {
-        setModalVisible(false);
-        resetForm();
-        fetchAddresses();
+        if (!thonToDanPho || !xaPhuong || !tinhThanh) {
+            alert('Vui lòng điền đủ thôn/tổ, xã/phường, tỉnh/thành phố');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const payload = {
+                userId: user?.id,
+                type,
+                thonToDanPho,
+                xaPhuong,
+                quanHuyen,
+                tinhThanh,
+                isDefault,
+            };
+
+            const url = editingId ? `${API_BASE_URL}/addresses/${editingId}` : `${API_BASE_URL}/addresses`;
+            const method = editingId ? 'PUT' : 'POST';
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                throw new Error(errorBody || 'Address save failed');
+            }
+
+            setModalVisible(false);
+            resetForm();
+            await fetchAddresses();
+        } catch (error) {
+            console.error('handleSaveAddress:', error);
+            alert('Lưu địa chỉ thất bại, vui lòng thử lại');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleDeleteAddress = async (id: string) => {
-
+        try {
+            const response = await fetch(`${API_BASE_URL}/addresses/${id}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                throw new Error('Delete failed');
+            }
+            await fetchAddresses();
+        } catch (error) {
+            console.error('handleDeleteAddress:', error);
+            alert('Xoá địa chỉ thất bại');
+        }
     };
 
     const resetForm = () => {
-        setStreet("");
-        setCity("");
-        setState("");
-        setZipCode("");
-        setCountry("");
+        setThonToDanPho("");
+        setXaPhuong("");
+        setQuanHuyen("");
+        setTinhThanh("");
         setType("Home");
         setIsDefault(false);
         setIsEditing(false);
@@ -115,7 +179,9 @@ export default function Addresses() {
                                     </View>
                                 </View>
                                 <Text className="text-secondary leading-5 ml-7">
-                                    {item.street}, {item.city}, {item.state} {item.zipCode}, {item.country}
+                                    {item.thonToDanPho}, {item.xaPhuong}
+                                    {item.quanHuyen ? `, ${item.quanHuyen}` : ''}
+                                    {`, ${item.tinhThanh}`}
                                 </Text>
                             </View>
                         ))
@@ -149,30 +215,17 @@ export default function Addresses() {
                                 ))}
                             </View>
 
-                            <Text className="text-primary font-medium mb-2">Street Address</Text>
-                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="123 Main St" value={street} onChangeText={setStreet} />
+                            <Text className="text-primary font-medium mb-2">Thôn/Tổ dân phố</Text>
+                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Thôn Trung Hòa" value={thonToDanPho} onChangeText={setThonToDanPho} />
 
-                            <View className="flex-row gap-4 mb-4">
-                                <View className="flex-1">
-                                    <Text className="text-primary font-medium mb-2">City</Text>
-                                    <TextInput className="bg-surface p-4 rounded-xl text-primary" placeholder="New York" value={city} onChangeText={setCity} />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-primary font-medium mb-2">State</Text>
-                                    <TextInput className="bg-surface p-4 rounded-xl text-primary" placeholder="NY" value={state} onChangeText={setState} />
-                                </View>
-                            </View>
+                            <Text className="text-primary font-medium mb-2">Xã/Phường</Text>
+                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Phường Yên Hòa" value={xaPhuong} onChangeText={setXaPhuong} />
 
-                            <View className="flex-row gap-4 mb-4">
-                                <View className="flex-1">
-                                    <Text className="text-primary font-medium mb-2">Zip Code</Text>
-                                    <TextInput className="bg-surface p-4 rounded-xl text-primary" placeholder="10001" value={zipCode} onChangeText={setZipCode} keyboardType="numeric" />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-primary font-medium mb-2">Country</Text>
-                                    <TextInput className="bg-surface p-4 rounded-xl text-primary" placeholder="USA" value={country} onChangeText={setCountry} />
-                                </View>
-                            </View>
+                            <Text className="text-primary font-medium mb-2">Quận/Huyện (tùy chọn)</Text>
+                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Quận Cầu Giấy" value={quanHuyen} onChangeText={setQuanHuyen} />
+
+                            <Text className="text-primary font-medium mb-2">Tỉnh/Thành phố</Text>
+                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Hà Nội" value={tinhThanh} onChangeText={setTinhThanh} />
 
                             <TouchableOpacity className="flex-row items-center mb-8" onPress={() => setIsDefault(!isDefault)}>
                                 <View className={`w-5 h-5 border rounded mr-2 items-center justify-center ${isDefault ? 'bg-primary border-primary' : 'border-gray-300'}`}>
