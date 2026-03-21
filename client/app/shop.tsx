@@ -2,14 +2,16 @@
 import { COLORS } from '@/constants/theme';
 import Header from '@/src/components/Header';
 import ProductCard from '@/src/components/ProductCard';
-import { dummyProducts } from '@/src/constants';
+import { apiRequest } from '@/src/services/api';
 import { Product } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Shop() {
+    const params = useLocalSearchParams<{ category?: string }>();
 
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
@@ -24,16 +26,24 @@ export default function Shop() {
             setLoadingMore(true);
         }
         try {
-            const start = (pageNumber - 1) * 10;
-            const end = start + 10;
-            const paginatedData = dummyProducts.slice(start, end);
+            const query = new URLSearchParams({
+                page: String(pageNumber),
+                limit: "10",
+                ...(params.category ? { category: params.category } : {}),
+            });
+
+            const data = await apiRequest<{
+                products: Product[];
+                pagination: { hasMore: boolean };
+            }>(`/products?${query.toString()}`);
+
             if (pageNumber === 1) {
-                setProducts(paginatedData);
+                setProducts(data.products || []);
             } else {
-                setProducts(prev => [...prev, ...paginatedData]);
+                setProducts(prev => [...prev, ...(data.products || [])]);
             }
 
-            setHasMore(end < dummyProducts.length);
+            setHasMore(Boolean(data.pagination?.hasMore));
             setPage(pageNumber);
         } catch (error) {
             console.error("Pagination error: ", error);
@@ -52,7 +62,7 @@ export default function Shop() {
 
     useEffect(() => {
         fetchProduct(1);
-    }, []);
+    }, [params.category]);
 
     return (
         <SafeAreaView className='flex-1 bg-surface' edges={['top']}>
@@ -69,6 +79,12 @@ export default function Shop() {
                     <Ionicons name='options-outline' size={24} color='white' />
                 </TouchableOpacity>
             </View>
+
+            {params.category ? (
+                <View className='mx-4 mb-1'>
+                    <Text className='text-secondary'>Category: <Text className='font-bold text-primary'>{params.category}</Text></Text>
+                </View>
+            ) : null}
 
             {loading ? (
                 <View className='flex-1 justify-center items-center'>

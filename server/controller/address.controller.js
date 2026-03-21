@@ -2,8 +2,8 @@ const Address = require('../models/address.model');
 
 exports.getAddresses = async (req, res) => {
     try {
-        const userId = req.query.userId;
-        if (!userId) return res.status(400).json({ message: 'Missing userId' });
+        const userId = req.user?._id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
         const addresses = await Address.find({ userId }).sort({ isDefault: -1, createdAt: -1 });
         res.json({ success: true, addresses });
@@ -15,8 +15,13 @@ exports.getAddresses = async (req, res) => {
 
 exports.createAddress = async (req, res) => {
     try {
-        const { userId, type, thonToDanPho, xaPhuong, quanHuyen, tinhThanh, isDefault } = req.body;
-        if (!userId || !thonToDanPho || !xaPhuong || !tinhThanh) {
+        const userId = req.user?._id;
+        const { type, thonToDanPho, xaPhuong, quanHuyen, tinhThanh, isDefault } = req.body;
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        if (!thonToDanPho || !xaPhuong || !tinhThanh) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
@@ -44,13 +49,20 @@ exports.createAddress = async (req, res) => {
 exports.updateAddress = async (req, res) => {
     try {
         const { id } = req.params;
-        const updates = req.body;
+        const userId = req.user?._id;
+        const updates = { ...req.body };
 
-        if (updates.isDefault && updates.userId) {
-            await Address.updateMany({ userId: updates.userId }, { isDefault: false });
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
         }
 
-        const address = await Address.findByIdAndUpdate(id, updates, { new: true });
+        delete updates.userId;
+
+        if (updates.isDefault) {
+            await Address.updateMany({ userId }, { isDefault: false });
+        }
+
+        const address = await Address.findOneAndUpdate({ _id: id, userId }, updates, { new: true });
         if (!address) {
             return res.status(404).json({ message: 'Address not found' });
         }
@@ -65,7 +77,12 @@ exports.updateAddress = async (req, res) => {
 exports.deleteAddress = async (req, res) => {
     try {
         const { id } = req.params;
-        const address = await Address.findByIdAndDelete(id);
+        const userId = req.user?._id;
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        const address = await Address.findOneAndDelete({ _id: id, userId });
         if (!address) {
             return res.status(404).json({ message: 'Address not found' });
         }

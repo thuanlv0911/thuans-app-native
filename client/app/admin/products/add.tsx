@@ -1,11 +1,16 @@
 import { CATEGORIES, COLORS } from "@/constants/theme";
+import { useAuth } from "@/src/context/AuthContext";
+import { apiRequest } from "@/src/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { ActivityIndicator, FlatList, Image, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import Toast from 'react-native-toast-message';
 
 export default function AddProduct() {
+    const { token } = useAuth();
+    const router = useRouter();
 
     const [submitting, setSubmitting] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -37,13 +42,47 @@ export default function AddProduct() {
 
     // Add Product
     const handleSubmit = async () => {
-        if (!name || !price || !category || sizes.length < 1) {
+        if (!name || !price || !category || sizes.length < 1 || images.length === 0) {
             Toast.show({
                 type: 'error',
                 text1: 'Missing Fields',
-                text2: 'Please fill in all required fields'
+                text2: 'Please fill in all required fields and add at least one image.'
             });
             return;
+        }
+
+        try {
+            setSubmitting(true);
+
+            await apiRequest('/products', {
+                method: 'POST',
+                token,
+                body: {
+                    name,
+                    description,
+                    price: Number(price),
+                    stock: Number(stock || 0),
+                    category,
+                    sizes: sizes.split(',').map((item) => item.trim()).filter(Boolean),
+                    images,
+                    isFeatured,
+                    isActive: true,
+                },
+            });
+
+            Toast.show({
+                type: 'success',
+                text1: 'Product created',
+            });
+            router.back();
+        } catch (error) {
+            Toast.show({
+                type: 'error',
+                text1: 'Create product failed',
+                text2: error instanceof Error ? error.message : 'Please try again.',
+            });
+        } finally {
+            setSubmitting(false);
         }
     };
 

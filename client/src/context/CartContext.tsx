@@ -1,9 +1,9 @@
 
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { Product } from "../types";
-import { dummyCart } from "../constants";
 import { useAuth } from "./AuthContext";
 import Toast from "react-native-toast-message";
+import { apiRequest } from "../services/api";
 
 export type CartItem = {
     id: string;
@@ -29,7 +29,7 @@ type CartContextType = {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated, token, user } = useAuth();
 
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -44,18 +44,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         setIsLoading(true);
-        const serverCart = dummyCart;
-        const mappedItems: CartItem[] = serverCart.items.map((item: any) => ({
-            id: item.product._id,
-            productId: item.product._id,
-            product: item.product,
-            quantity: item.quantity,
-            size: item.size,
-            price: item.price
-        }));
-        setCartItems(mappedItems);
-        setCartTotal(serverCart.totalAmount);
-        setIsLoading(false);
+        try {
+            const data = await apiRequest<{ cart: { items: any[]; totalAmount: number } }>("/cart", {
+                token,
+            });
+
+            const mappedItems: CartItem[] = (data.cart?.items || []).map((item: any) => ({
+                id: item._id,
+                productId: item.product?._id,
+                product: item.product,
+                quantity: item.quantity,
+                size: item.size,
+                price: item.price,
+            }));
+
+            setCartItems(mappedItems);
+            setCartTotal(data.cart?.totalAmount || 0);
+        } catch (error) {
+            Toast.show({
+                type: "error",
+                text1: "Khong tai duoc gio hang",
+                text2: error instanceof Error ? error.message : "Vui long thu lai sau.",
+            });
+        } finally {
+            setIsLoading(false);
+        }
     }
 
     const ensureAuthenticated = () => {
@@ -76,46 +89,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        setCartItems((prev) => {
-            const existingItem = prev.find((item) => item.productId === product._id && item.size === size);
-
-            if (existingItem) {
-                return prev.map((item) =>
-                    item.productId === product._id && item.size === size
-                        ? { ...item, quantity: item.quantity + 1 }
-                        : item
-                );
-            }
-
-            return [
-                ...prev,
-                {
-                    id: `${product._id}-${size}`,
-                    productId: product._id,
-                    product,
-                    quantity: 1,
-                    size,
-                    price: product.price,
-                },
-            ];
+        await apiRequest("/cart/items", {
+            method: "POST",
+            token,
+            body: { productId: product._id, size, quantity: 1 },
         });
 
-        setCartTotal((prev) => prev + product.price);
+        await fetchCart();
     }
     const removeFromCart = async (productId: string, size: string) => {
         if (!ensureAuthenticated()) {
             return;
         }
 
-        setCartItems((prev) => {
-            const target = prev.find((item) => item.productId === productId && item.size === size);
-
-            if (target) {
-                setCartTotal((currentTotal) => Math.max(0, currentTotal - target.price * target.quantity));
-            }
-
-            return prev.filter((item) => !(item.productId === productId && item.size === size));
+        await apiRequest("/cart/items", {
+            method: "DELETE",
+            token,
+            body: { productId, size },
         });
+
+        await fetchCart();
     }
 
     const updateQuantity = async (productId: string, quantity: number, size: string = "M") => {
@@ -128,20 +121,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        setCartItems((prev) => {
-            const nextItems = prev.map((item) =>
-                item.productId === productId && item.size === size
-                    ? { ...item, quantity }
-                    : item
-            );
-
-            const nextTotal = nextItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-            setCartTotal(nextTotal);
-            return nextItems;
+        await apiRequest("/cart/items", {
+            method: "PUT",
+            token,
+            body: { productId, size, quantity },
         });
+
+        await fetchCart();
     }
 
     const clearCart = async () => {
+        if (!isAuthenticated) {
+            setCartItems([]);
+            setCartTotal(0);
+            return;
+        }
+
+        await apiRequest("/cart", {
+            method: "DELETE",
+            token,
+        });
+
         setCartItems([]);
         setCartTotal(0);
     }

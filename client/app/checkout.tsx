@@ -1,9 +1,9 @@
 import { COLORS } from '@/constants/theme';
 import AuthRequiredState from '@/src/components/AuthRequiredState';
 import Header from '@/src/components/Header';
-import { API_BASE_URL } from '@/src/config/api';
 import { useAuth } from '@/src/context/AuthContext';
 import { useCart } from '@/src/context/CartContext';
+import { apiRequest } from '@/src/services/api';
 import { Address } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -13,8 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 export default function Checkout() {
-    const { isAuthenticated, user } = useAuth();
-    const { cartTotal } = useCart();
+    const { isAuthenticated, token } = useAuth();
+    const { cartTotal, clearCart } = useCart();
     const router = useRouter();
 
     const [loading, setLoading] = useState(false);
@@ -29,16 +29,12 @@ export default function Checkout() {
 
     const fetchAddress = async () => {
         try {
-            if (!user?.id) {
+            if (!token) {
                 setPageLoading(false);
                 return;
             }
 
-            const response = await fetch(`${API_BASE_URL}/addresses?userId=${user.id}`);
-            if (!response.ok) {
-                throw new Error('Failed to load addresses');
-            }
-            const data = await response.json();
+            const data = await apiRequest<{ addresses: Address[] }>('/addresses', { token });
             const addressList: Address[] = data.addresses ?? [];
             if (addressList.length > 0) {
                 const def = addressList.find((a) => a.isDefault) || addressList[0];
@@ -60,14 +56,34 @@ export default function Checkout() {
             })
             return;
         }
-        if (paymentMethod === 'stripe')
-            return Toast.show({
-                type: "error",
-                text1: "Info",
-                text2: "Stripe not implemented yet"
-            })
-        //Cash on Delivery
-        router.replace('/orders');
+
+        setLoading(true);
+        try {
+            const data = await apiRequest<{ order: { _id: string } }>('/orders', {
+                method: 'POST',
+                token,
+                body: {
+                    addressId: selectedAddress._id,
+                    paymentMethod,
+                },
+            });
+
+            await clearCart();
+            Toast.show({
+                type: 'success',
+                text1: 'Order placed',
+                text2: 'Your order has been created successfully.',
+            });
+            router.replace(`/orders/${data.order._id}`);
+        } catch (error) {
+            Toast.show({
+                type: 'error',
+                text1: 'Place order failed',
+                text2: error instanceof Error ? error.message : 'Please try again.',
+            });
+        } finally {
+            setLoading(false);
+        }
     }
 
     useEffect(() => {
@@ -77,7 +93,7 @@ export default function Checkout() {
         }
 
         fetchAddress();
-    }, [isAuthenticated])
+    }, [isAuthenticated, token])
 
     if (pageLoading) {
         return (
