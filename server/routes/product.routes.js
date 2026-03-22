@@ -12,6 +12,9 @@ router.get("/", async (req, res) => {
             page = 1,
             limit = 10,
             search = "",
+            minPrice,
+            maxPrice,
+            sortBy = "newest",
         } = req.query;
 
         const pageNumber = Math.max(1, Number(page) || 1);
@@ -19,7 +22,16 @@ router.get("/", async (req, res) => {
         const query = { isActive: true };
 
         if (category) {
-            query.category = category;
+            const categories = String(category)
+                .split(",")
+                .map((item) => item.trim())
+                .filter(Boolean);
+
+            if (categories.length === 1) {
+                query.category = categories[0];
+            } else if (categories.length > 1) {
+                query.category = { $in: categories };
+            }
         }
 
         if (featured === "true") {
@@ -27,12 +39,41 @@ router.get("/", async (req, res) => {
         }
 
         if (search) {
-            query.name = { $regex: search, $options: "i" };
+            query.$or = [
+                { name: { $regex: search, $options: "i" } },
+                { description: { $regex: search, $options: "i" } },
+                { category: { $regex: search, $options: "i" } },
+            ];
         }
+
+        const priceFilter = {};
+
+        if (minPrice !== undefined && minPrice !== "") {
+            priceFilter.$gte = Math.max(0, Number(minPrice) || 0);
+        }
+
+        if (maxPrice !== undefined && maxPrice !== "") {
+            priceFilter.$lte = Math.max(0, Number(maxPrice) || 0);
+        }
+
+        if (Object.keys(priceFilter).length > 0) {
+            query.price = priceFilter;
+        }
+
+        const sortMap = {
+            newest: { createdAt: -1 },
+            oldest: { createdAt: 1 },
+            price_asc: { price: 1, createdAt: -1 },
+            price_desc: { price: -1, createdAt: -1 },
+            name_asc: { name: 1, createdAt: -1 },
+            name_desc: { name: -1, createdAt: -1 },
+        };
+
+        const sort = sortMap[sortBy] || sortMap.newest;
 
         const [products, total] = await Promise.all([
             Product.find(query)
-                .sort({ createdAt: -1 })
+                .sort(sort)
                 .skip((pageNumber - 1) * limitNumber)
                 .limit(limitNumber),
             Product.countDocuments(query),

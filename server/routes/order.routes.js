@@ -85,4 +85,56 @@ router.post("/", authMiddleware, async (req, res) => {
     }
 });
 
+router.patch("/:id/pay", authMiddleware, async (req, res) => {
+    try {
+        const order = await Order.findOne({ _id: req.params.id, user: req.user._id });
+
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (order.orderStatus !== "delivered") {
+            return res.status(400).json({ message: "Payment is only available after delivery" });
+        }
+
+        if (order.paymentStatus === "paid") {
+            return res.json({ order });
+        }
+
+        order.paymentStatus = "paid";
+        await order.save();
+
+        return res.json({ order });
+    } catch (error) {
+        return res.status(500).json({ message: "Failed to update payment status" });
+    }
+});
+
+router.patch("/:id/confirm-received", authMiddleware, async (req, res) => {
+    try {
+        const order = await Order.findOne({ _id: req.params.id, user: req.user._id });
+
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (order.orderStatus !== "delivered") {
+            return res.status(400).json({ message: "Only delivered orders can be confirmed" });
+        }
+
+        if (order.paymentStatus !== "paid") {
+            return res.status(400).json({ message: "Please complete payment before confirming receipt" });
+        }
+
+        if (!order.customerConfirmedAt) {
+            order.customerConfirmedAt = new Date();
+            await order.save();
+        }
+
+        return res.json({ order });
+    } catch (error) {
+        return res.status(500).json({ message: "Failed to confirm order receipt" });
+    }
+});
+
 module.exports = router;

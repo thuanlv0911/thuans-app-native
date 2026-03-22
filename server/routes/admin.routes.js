@@ -67,6 +67,9 @@ router.patch("/orders/:id/status", async (req, res) => {
 
         if (orderStatus === "delivered") {
             update.deliveredAt = new Date();
+        } else {
+            update.deliveredAt = null;
+            update.customerConfirmedAt = null;
         }
 
         const order = await Order.findByIdAndUpdate(req.params.id, update, { new: true })
