@@ -162,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateName = async (name: string) => {
-    if (!user) {
+    if (!user || !token) {
       throw new Error('User not authenticated');
     }
 
@@ -171,9 +171,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Name cannot be empty');
     }
 
-    const updatedUser = { ...user, name: trimmed };
-    setUser(updatedUser);
-    await SecureStore.setItemAsync(AUTH_USER_KEY, JSON.stringify(updatedUser));
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: trimmed }),
+    });
+
+    if (!response.ok) {
+      throw new Error(await parseErrorMessage(response));
+    }
+
+    const data = await response.json();
+    if (!data.user) {
+      throw new Error('Invalid response from server');
+    }
+
+    setUser(data.user);
+    await SecureStore.setItemAsync(AUTH_USER_KEY, JSON.stringify(data.user));
   };
 
   return (

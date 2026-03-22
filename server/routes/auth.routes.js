@@ -102,4 +102,22 @@ router.get("/me", authMiddleware, async (req, res) => {
     return res.json({ user: sanitizeUser(req.user) });
 });
 
+router.put("/me", authMiddleware, async (req, res) => {
+    try {
+        const { name } = req.body;
+
+        if (!name || !name.trim()) {
+            return res.status(400).json({ message: "Name is required" });
+        }
+
+        const trimmedName = name.trim();
+        req.user.name = trimmedName;
+        await req.user.save();
+
+        return res.json({ user: sanitizeUser(req.user) });
+    } catch (error) {
+        return res.status(500).json({ message: "Unable to update profile" });
+    }
+});
+
 module.exports = router;
