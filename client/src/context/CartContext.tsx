@@ -23,7 +23,13 @@ type CartContextType = {
     cartTotal: number;
     itemCount: number;
     isLoading: boolean;
-
+    selectedItems: Set<string>;
+    toggleSelectItem: (itemId: string) => void;
+    selectAll: () => void;
+    clearSelection: () => void;
+    selectedTotal: number;
+    selectedCartItems: CartItem[];
+    refreshCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -34,6 +40,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [cartTotal, setCartTotal] = useState(0);
+    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
     const fetchCart = async () => {
         if (!isAuthenticated) {
@@ -181,12 +188,39 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
     const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+    const toggleSelectItem = (itemId: string) => {
+        setSelectedItems(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(itemId)) {
+                newSet.delete(itemId);
+            } else {
+                newSet.add(itemId);
+            }
+            return newSet;
+        });
+    };
+
+    const selectAll = () => {
+        setSelectedItems(new Set(cartItems.map(item => item.id)));
+    };
+
+    const clearSelection = () => {
+        setSelectedItems(new Set());
+    };
+
+    const selectedCartItems = cartItems.filter(item => selectedItems.has(item.id));
+    const selectedTotal = selectedCartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
     useEffect(() => {
         fetchCart();
     }, [isAuthenticated, user?.id])
 
+    useEffect(() => {
+        setSelectedItems(new Set(cartItems.map(item => item.id)));
+    }, [cartItems]);
+
     return (
-        <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount, isLoading }}>
+        <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount, isLoading, selectedItems, toggleSelectItem, selectAll, clearSelection, selectedTotal, selectedCartItems, refreshCart: fetchCart }}>
             {children}
         </CartContext.Provider>
     )
@@ -199,4 +233,3 @@ export function useCart() {
     }
     return context;
 }
-

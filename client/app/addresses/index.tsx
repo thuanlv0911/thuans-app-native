@@ -6,7 +6,7 @@ import { apiRequest } from "@/src/services/api";
 import { Address } from "@/src/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -32,11 +32,6 @@ export default function Addresses() {
 
     const isSelectionMode = params.select === "true";
     const selectedAddressId = typeof params.selectedAddressId === "string" ? params.selectedAddressId : "";
-
-    const selectedAddress = useMemo(
-        () => addresses.find((address) => address._id === selectedAddressId) || null,
-        [addresses, selectedAddressId]
-    );
 
     const fetchAddresses = useCallback(async () => {
         setLoading(true);

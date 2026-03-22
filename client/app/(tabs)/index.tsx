@@ -5,6 +5,7 @@ import ProductCard from '@/src/components/ProductCard';
 import { BANNERS } from '@/src/constants';
 import { apiRequest } from '@/src/services/api';
 import { Product } from '@/src/types';
+import { useAuth } from '@/src/context/AuthContext';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -14,25 +15,31 @@ const { width } = Dimensions.get("window");
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useAuth();
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const popularProducts = useMemo(
-    () => products.filter((product) => product.stock > 0 && product.isActive).slice(0, 4),
+  const featuredProducts = useMemo(
+    () => products.filter((product) => product.isFeatured).slice(0, 4),
     [products]
   );
 
   const outOfStockProducts = useMemo(
-    () => products.filter((product) => product.stock <= 0 || !product.isActive).slice(0, 4),
+    () => products.filter((product) => product.stock === 0 || !product.isActive).slice(0, 4),
+    [products]
+  );
+
+  const newArrivals = useMemo(
+    () => products.filter((product) => !product.isFeatured && product.stock > 0).slice(0, 4),
     [products]
   );
 
   const fetchProducts = async () => {
     try {
       const [productsData, categoriesData] = await Promise.all([
-        apiRequest<{ products: Product[] }>('/products?featured=true&limit=20'),
+        apiRequest<{ products: Product[] }>('/products?limit=40'),
         apiRequest<{ categories: string[] }>('/products/categories'),
       ]);
 
@@ -61,7 +68,12 @@ export default function Home() {
   return (
     <SafeAreaView className='flex-1' edges={['top']}>
       <Header title='Nodaco' showMenu showCart showLogo />
+
       <ScrollView className='flex-1 px-4' showsVerticalScrollIndicator={false}>
+        <View className='bg-yellow-50 rounded-2xl p-5 mb-6 border border-yellow-100'>
+          <Text className='text-lg font-bold text-primary'>Hello{user?.name ? `, ${user.name}` : ''}!</Text>
+          <Text className='text-secondary mt-1'>Welcome back to your curated shop dashboard.</Text>
+        </View>
         <View className='mb-6'>
           <ScrollView
             horizontal
@@ -99,6 +111,8 @@ export default function Home() {
           </View>
         </View>
 
+
+
         <View className='mb-6'>
           <View className='flex-row justify-between items-center mb-4'>
             <Text className='text-xl font-bold text-primary'>Categories</Text>
@@ -115,39 +129,67 @@ export default function Home() {
           </ScrollView>
         </View>
 
-        <View className='mb-8'>
+
+
+        <View className='mb-6'>
           <View className='flex-row justify-between items-center mb-4'>
-            <Text className='text-xl font-bold text-primary'>Popular</Text>
+            <Text className='text-xl font-bold text-primary'>Featured Picks</Text>
             <TouchableOpacity onPress={() => router.push('/shop')}>
               <Text className='text-secondary text-sm'>See All</Text>
             </TouchableOpacity>
           </View>
           {loading ? (
             <ActivityIndicator size='large' />
+          ) : featuredProducts.length === 0 ? (
+            <Text className='text-secondary'>No featured products right now. Browse all.</Text>
           ) : (
             <View className='flex-row flex-wrap justify-between'>
-              {popularProducts.map((product) => (
+              {featuredProducts.map((product) => (
                 <ProductCard key={product._id} product={product} />
               ))}
             </View>
           )}
         </View>
 
-        {!loading && outOfStockProducts.length > 0 && (
-          <View className='mb-8'>
-            <View className='flex-row justify-between items-center mb-4'>
-              <Text className='text-xl font-bold text-primary'>Out of Stock</Text>
-              <TouchableOpacity onPress={() => router.push('/shop')}>
-                <Text className='text-secondary text-sm'>Browse Shop</Text>
-              </TouchableOpacity>
+        <View className='mb-8'>
+          <View className='flex-row justify-between items-center mb-4'>
+            <Text className='text-xl font-bold text-primary'>New Arrivals</Text>
+            <TouchableOpacity onPress={() => router.push('/shop')}>
+              <Text className='text-secondary text-sm'>Explore</Text>
+            </TouchableOpacity>
+          </View>
+          {loading ? (
+            <ActivityIndicator size='large' />
+          ) : newArrivals.length === 0 ? (
+            <Text className='text-secondary'>No new arrivals for now. Check stock soon.</Text>
+          ) : (
+            <View className='flex-row flex-wrap justify-between'>
+              {newArrivals.map((product) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
             </View>
+          )}
+        </View>
+
+        <View className='mb-8'>
+          <View className='flex-row justify-between items-center mb-4'>
+            <Text className='text-xl font-bold text-primary'>Out of Stock Watchlist</Text>
+            <TouchableOpacity onPress={() => router.push('/shop')}>
+              <Text className='text-secondary text-sm'>All Products</Text>
+            </TouchableOpacity>
+          </View>
+          {loading ? (
+            <ActivityIndicator size='large' />
+          ) : outOfStockProducts.length === 0 ? (
+            <Text className='text-secondary'>Không có sản phẩm hết hàng.</Text>
+          ) : (
             <View className='flex-row flex-wrap justify-between'>
               {outOfStockProducts.map((product) => (
                 <ProductCard key={product._id} product={product} />
               ))}
             </View>
-          </View>
-        )}
+          )}
+        </View>
 
         <View className='bg-gray-100 p-6 rounded-2xl mb-20 items-center'>
           <Text className='text-2xl font-bold text-primary mb-2 text-center'>Join in Revolution</Text>

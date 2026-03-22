@@ -5,11 +5,14 @@ import { Image, Text, TouchableOpacity, View } from 'react-native';
 import { CartItemProps } from '../types';
 import { COLORS } from '@/constants/theme';
 
-export default function CartItem({ item, onRemove, onUpdateQuantity }: CartItemProps) {
+export default function CartItem({ item, onRemove, onUpdateQuantity, isSelected, onToggleSelect }: CartItemProps) {
 
     const imageUrl = item.product.images[0];
     return (
         <View className='flex-row mb-4 bg-white p-3 rounded-xl'>
+            <TouchableOpacity onPress={onToggleSelect} className='mr-3 justify-center'>
+                <Ionicons name={isSelected ? 'checkbox' : 'square-outline'} size={24} color={COLORS.primary} />
+            </TouchableOpacity>
             <View className='w-20 h-20 bg-gray-100 rounded-lg overflow-hidden mr-3'>
                 <Image source={{ uri: imageUrl }} className='w-full h-full' resizeMode='cover' />
             </View>

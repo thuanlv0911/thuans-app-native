@@ -15,7 +15,7 @@ import Toast from 'react-native-toast-message';
 export default function Checkout() {
     const params = useLocalSearchParams<{ selectedAddressId?: string }>();
     const { isAuthenticated, token } = useAuth();
-    const { cartItems, cartTotal, clearCart } = useCart();
+    const { selectedCartItems, selectedTotal, refreshCart } = useCart();
     const router = useRouter();
 
     const [loading, setLoading] = useState(false);
@@ -26,7 +26,7 @@ export default function Checkout() {
 
     const shipping = 2.0;
     const tax = 0;
-    const total = cartTotal + shipping + tax;
+    const total = selectedTotal + shipping + tax;
 
     const selectedAddress = useMemo(
         () => addresses.find((address) => address._id === selectedAddressId) || null,
@@ -61,25 +61,26 @@ export default function Checkout() {
     }, [params.selectedAddressId, token]);
 
     const handlePlaceOrder = async () => {
-        if (cartItems.length === 0) {
+        if (selectedCartItems.length === 0) {
             Toast.show({
                 type: 'error',
-                text1: 'Cart is empty',
-                text2: 'Please add products before checkout.',
+                text1: 'No items selected',
+                text2: 'Please select items to checkout.',
             });
             return;
         }
 
         if (!selectedAddressId) {
             Toast.show({
-                type: "error",
-                text1: "Error",
-                text2: "Please select a shipping address",
+                type: 'error',
+                text1: 'Error',
+                text2: 'Please select a shipping address',
             });
             return;
         }
 
         setLoading(true);
+
         try {
             const data = await apiRequest<{ order: { _id: string } }>('/orders', {
                 method: 'POST',
@@ -87,14 +88,16 @@ export default function Checkout() {
                 body: {
                     addressId: selectedAddressId,
                     paymentMethod,
+                    selectedItemIds: selectedCartItems.map((item) => item.id),
                 },
             });
 
-            await clearCart();
+            await refreshCart();
+
             Toast.show({
                 type: 'success',
                 text1: 'Order placed',
-                text2: 'Your order has been created successfully.',
+                text2: 'Your selected products are placed successfully.',
             });
             router.replace(`/orders/${data.order._id}`);
         } catch (error) {
@@ -133,9 +136,16 @@ export default function Checkout() {
             <Header title="Checkout" showBack />
             {!isAuthenticated ? (
                 <AuthRequiredState
-                    title="Checkout can dang nhap"
-                    description="Dang nhap de tiep tuc dat hang, chon dia chi giao hang va thanh toan."
+                    title="Login to proceed to checkout"
+                    description="Please log in to continue with your purchase, select a shipping address, and complete the payment."
                 />
+            ) : selectedCartItems.length === 0 ? (
+                <View className='flex-1 items-center justify-center'>
+                    <Text className='text-secondary text-lg'>No items selected for checkout</Text>
+                    <TouchableOpacity onPress={() => router.back()} className='mt-4'>
+                        <Text className='text-primary font-bold'>Back to Cart</Text>
+                    </TouchableOpacity>
+                </View>
             ) : (
                 <>
                     <ScrollView className='flex-1 px-4 mt-4'>
@@ -218,8 +228,8 @@ export default function Checkout() {
                         <Text className='text-lg font-bold text-primary mb-4'>Order Summary</Text>
 
                         <View className='flex-row justify-between mb-2'>
-                            <Text className='text-secondary'>Subtotal</Text>
-                            <Text className='font-bold'>${cartTotal.toFixed(2)}</Text>
+                            <Text className='text-secondary'>Subtotal ({selectedCartItems.length} items)</Text>
+                            <Text className='font-bold'>${selectedTotal.toFixed(2)}</Text>
                         </View>
 
                         <View className='flex-row justify-between mb-2'>

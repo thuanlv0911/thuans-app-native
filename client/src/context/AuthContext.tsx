@@ -20,6 +20,7 @@ type AuthContextValue = {
   signUp: (name: string, email: string, password: string) => Promise<AuthUser>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateName: (name: string) => Promise<void>;
 };
 
 type AuthResponse = {
@@ -160,6 +161,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.setItemAsync(AUTH_USER_KEY, JSON.stringify(data.user));
   };
 
+  const updateName = async (name: string) => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const trimmed = name.trim();
+    if (!trimmed) {
+      throw new Error('Name cannot be empty');
+    }
+
+    const updatedUser = { ...user, name: trimmed };
+    setUser(updatedUser);
+    await SecureStore.setItemAsync(AUTH_USER_KEY, JSON.stringify(updatedUser));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -172,6 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signOut,
         refreshProfile,
+        updateName,
       }}
     >
       {children}
