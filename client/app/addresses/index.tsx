@@ -1,4 +1,3 @@
-
 import { COLORS } from "@/constants/theme";
 import AuthRequiredState from "@/src/components/AuthRequiredState";
 import Header from "@/src/components/Header";
@@ -6,16 +5,18 @@ import { useAuth } from "@/src/context/AuthContext";
 import { apiRequest } from "@/src/services/api";
 import { Address } from "@/src/types";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Addresses() {
+    const params = useLocalSearchParams<{ select?: string; selectedAddressId?: string }>();
+    const router = useRouter();
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
 
-    // Form state
     const [type, setType] = useState("Home");
     const [thonToDanPho, setThonToDanPho] = useState("");
     const [xaPhuong, setXaPhuong] = useState("");
@@ -24,11 +25,18 @@ export default function Addresses() {
     const [isDefault, setIsDefault] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
-    // Edit state
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
 
     const { token, isAuthenticated } = useAuth();
+
+    const isSelectionMode = params.select === "true";
+    const selectedAddressId = typeof params.selectedAddressId === "string" ? params.selectedAddressId : "";
+
+    const selectedAddress = useMemo(
+        () => addresses.find((address) => address._id === selectedAddressId) || null,
+        [addresses, selectedAddressId]
+    );
 
     const fetchAddresses = useCallback(async () => {
         setLoading(true);
@@ -66,7 +74,7 @@ export default function Addresses() {
 
     const handleSaveAddress = async () => {
         if (!thonToDanPho || !xaPhuong || !tinhThanh) {
-            alert('Vui lòng điền đủ thôn/tổ, xã/phường, tỉnh/thành phố');
+            alert('Please fill in the full address.');
             return;
         }
 
@@ -81,7 +89,7 @@ export default function Addresses() {
                 isDefault,
             };
 
-            await apiRequest(editingId ? `/addresses/${editingId}` : '/addresses', {
+            const data = await apiRequest<{ address: Address }>(editingId ? `/addresses/${editingId}` : '/addresses', {
                 method: editingId ? 'PUT' : 'POST',
                 token,
                 body: payload,
@@ -90,9 +98,16 @@ export default function Addresses() {
             setModalVisible(false);
             resetForm();
             await fetchAddresses();
+
+            if (isSelectionMode && data.address?._id) {
+                router.replace({
+                    pathname: '/checkout',
+                    params: { selectedAddressId: data.address._id },
+                });
+            }
         } catch (error) {
             console.error('handleSaveAddress:', error);
-            alert('Lưu địa chỉ thất bại, vui lòng thử lại');
+            alert('Failed to save address, please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -107,8 +122,15 @@ export default function Addresses() {
             await fetchAddresses();
         } catch (error) {
             console.error('handleDeleteAddress:', error);
-            alert('Xoá địa chỉ thất bại');
+            alert('Failed to delete address, please try again.');
         }
+    };
+
+    const handleSelectAddress = (id: string) => {
+        router.replace({
+            pathname: '/checkout',
+            params: { selectedAddressId: id },
+        });
     };
 
     const resetForm = () => {
@@ -133,8 +155,8 @@ export default function Addresses() {
 
             {!isAuthenticated ? (
                 <AuthRequiredState
-                    title="Address can dang nhap"
-                    description="Dang nhap de luu va quan ly dia chi giao hang cua ban."
+                    title="Login to view your addresses"
+                    description="Please log in to save and manage your shipping addresses."
                 />
             ) : loading ? (
                 <View className="flex-1 justify-center items-center">
@@ -142,41 +164,72 @@ export default function Addresses() {
                 </View>
             ) : (
                 <ScrollView className="flex-1 px-4 pt-4">
+                    {isSelectionMode && (
+                        <View className="bg-primary/5 border border-primary/10 rounded-xl p-4 mb-4">
+                            <Text className="text-primary font-bold mb-1">Select shipping address</Text>
+                            <Text className="text-secondary">
+                                Choose an address here, then return to checkout with your chosen address.
+                            </Text>
+                        </View>
+                    )}
+
+
+
                     {addresses.length === 0 ? (
                         <Text className="text-center text-secondary mt-10">No addresses found</Text>
                     ) : (
-                        addresses.map((item) => (
-                            <View key={item._id} className="bg-white p-4 rounded-xl mb-4 shadow-sm">
-                                <View className="flex-row items-center justify-between mb-2">
-                                    <View className="flex-row items-center">
-                                        <Ionicons
-                                            name={item.type === "Home" ? "home-outline" : "briefcase-outline"}
-                                            size={20}
-                                            color={COLORS.primary}
-                                        />
-                                        <Text className="text-base font-bold text-primary ml-2">{item.type}</Text>
-                                        {item.isDefault && (
-                                            <View className="bg-primary/10 px-2 py-1 rounded ml-2">
-                                                <Text className="text-primary text-xs font-bold">Default</Text>
-                                            </View>
-                                        )}
+                        addresses.map((item) => {
+                            const isSelected = selectedAddressId === item._id;
+
+                            return (
+                                <TouchableOpacity
+                                    key={item._id}
+                                    className={`bg-white p-4 rounded-xl mb-4 shadow-sm border ${isSelected ? 'border-primary' : 'border-transparent'}`}
+                                    activeOpacity={isSelectionMode ? 0.8 : 1}
+                                    onPress={isSelectionMode ? () => handleSelectAddress(item._id) : undefined}
+                                >
+                                    <View className="flex-row items-center justify-between mb-2">
+                                        <View className="flex-row items-center flex-1 pr-3">
+                                            <Ionicons
+                                                name={item.type === "Home" ? "home-outline" : "briefcase-outline"}
+                                                size={20}
+                                                color={COLORS.primary}
+                                            />
+                                            <Text className="text-base font-bold text-primary ml-2">{item.type}</Text>
+                                            {item.isDefault && (
+                                                <View className="bg-primary/10 px-2 py-1 rounded ml-2">
+                                                    <Text className="text-primary text-xs font-bold">Default</Text>
+                                                </View>
+                                            )}
+                                            {isSelected && isSelectionMode && (
+                                                <View className="bg-green-100 px-2 py-1 rounded ml-2">
+                                                    <Text className="text-green-700 text-xs font-bold">Selected</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                        <View className="flex-row items-center gap-4">
+                                            {!isSelectionMode && (
+                                                <>
+                                                    <TouchableOpacity onPress={() => handleEditSearch(item)}>
+                                                        <Ionicons name="pencil-outline" size={20} color={COLORS.secondary} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity onPress={() => handleDeleteAddress(item._id)}>
+                                                        <Ionicons name="trash-outline" size={20} color={COLORS.error || '#ff4444'} />
+                                                    </TouchableOpacity>
+                                                </>
+                                            )}
+
+
+                                        </View>
                                     </View>
-                                    <View className="flex-row items-center gap-4">
-                                        <TouchableOpacity onPress={() => handleEditSearch(item)}>
-                                            <Ionicons name="pencil-outline" size={20} color={COLORS.secondary} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity onPress={() => handleDeleteAddress(item._id)}>
-                                            <Ionicons name="trash-outline" size={20} color={COLORS.error || '#ff4444'} />
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                                <Text className="text-secondary leading-5 ml-7">
-                                    {item.thonToDanPho}, {item.xaPhuong}
-                                    {item.quanHuyen ? `, ${item.quanHuyen}` : ''}
-                                    {`, ${item.tinhThanh}`}
-                                </Text>
-                            </View>
-                        ))
+                                    <Text className="text-secondary leading-5 ml-7">
+                                        {item.thonToDanPho}, {item.xaPhuong}
+                                        {item.quanHuyen ? `, ${item.quanHuyen}` : ''}
+                                        {`, ${item.tinhThanh}`}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })
                     )}
 
                     <TouchableOpacity className="flex-row items-center justify-center p-4 border border-dashed border-gray-300 rounded-xl mt-2 mb-8" onPress={openAddModal}>
@@ -186,8 +239,7 @@ export default function Addresses() {
                 </ScrollView>
             )}
 
-            {/* Add Address Modal */}
-            <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+            <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
                 <View className="flex-1 justify-end bg-black/50">
                     <View className="bg-white rounded-t-3xl p-6 h-[85%]">
                         <View className="flex-row justify-between items-center mb-6">
@@ -200,24 +252,24 @@ export default function Addresses() {
                         <ScrollView showsVerticalScrollIndicator={false}>
                             <Text className="text-primary font-medium mb-2">Label</Text>
                             <View className="flex-row gap-3 mb-4">
-                                {["Home", "Work", "Other"].map((t) => (
-                                    <TouchableOpacity key={t} onPress={() => setType(t)} className={`px-4 py-2 rounded-full border ${type === t ? 'bg-primary border-primary' : 'bg-white border-gray-300'}`}>
-                                        <Text className={type === t ? 'text-white' : 'text-primary'}>{t}</Text>
+                                {["Home", "Work", "Other"].map((label) => (
+                                    <TouchableOpacity key={label} onPress={() => setType(label)} className={`px-4 py-2 rounded-full border ${type === label ? 'bg-primary border-primary' : 'bg-white border-gray-300'}`}>
+                                        <Text className={type === label ? 'text-white' : 'text-primary'}>{label}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
 
-                            <Text className="text-primary font-medium mb-2">Thôn/Tổ dân phố</Text>
-                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Thôn Trung Hòa" value={thonToDanPho} onChangeText={setThonToDanPho} />
+                            <Text className="text-primary font-medium mb-2">Thon/To dan pho</Text>
+                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Thon Trung Hoa" value={thonToDanPho} onChangeText={setThonToDanPho} />
 
-                            <Text className="text-primary font-medium mb-2">Xã/Phường</Text>
-                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Phường Yên Hòa" value={xaPhuong} onChangeText={setXaPhuong} />
+                            <Text className="text-primary font-medium mb-2">Xa/Phuong</Text>
+                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Phuong Yen Hoa" value={xaPhuong} onChangeText={setXaPhuong} />
 
-                            <Text className="text-primary font-medium mb-2">Quận/Huyện (tùy chọn)</Text>
-                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Quận Cầu Giấy" value={quanHuyen} onChangeText={setQuanHuyen} />
+                            <Text className="text-primary font-medium mb-2">Quan/Huyen (tuy chon)</Text>
+                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Quan Cau Giay" value={quanHuyen} onChangeText={setQuanHuyen} />
 
-                            <Text className="text-primary font-medium mb-2">Tỉnh/Thành phố</Text>
-                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Hà Nội" value={tinhThanh} onChangeText={setTinhThanh} />
+                            <Text className="text-primary font-medium mb-2">Tinh/Thanh pho</Text>
+                            <TextInput className="bg-surface p-4 rounded-xl text-primary mb-4" placeholder="Ha Noi" value={tinhThanh} onChangeText={setTinhThanh} />
 
                             <TouchableOpacity className="flex-row items-center mb-8" onPress={() => setIsDefault(!isDefault)}>
                                 <View className={`w-5 h-5 border rounded mr-2 items-center justify-center ${isDefault ? 'bg-primary border-primary' : 'border-gray-300'}`}>
@@ -226,7 +278,7 @@ export default function Addresses() {
                                 <Text className="text-primary">Set as default address</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity className="w-full bg-primary py-4 rounded-full items-center mb-10" onPress={handleSaveAddress} disabled={submitting} >
+                            <TouchableOpacity className="w-full bg-primary py-4 rounded-full items-center mb-10" onPress={handleSaveAddress} disabled={submitting}>
                                 {submitting ? (
                                     <ActivityIndicator color="white" />
                                 ) : (

@@ -2,6 +2,7 @@ const express = require("express");
 const Address = require("../models/address.model");
 const Cart = require("../models/cart.model");
 const Order = require("../models/order.model");
+const Product = require("../models/product.model");
 const { authMiddleware } = require("../middleware/auth.middleware");
 
 const router = express.Router();
@@ -45,6 +46,22 @@ router.post("/", authMiddleware, async (req, res) => {
             return res.status(400).json({ message: "Cart is empty" });
         }
 
+        for (const item of cart.items) {
+            const product = item.product;
+
+            if (!product) {
+                return res.status(400).json({ message: "One or more products are no longer available" });
+            }
+
+            if (product.stock <= 0 || !product.isActive) {
+                return res.status(400).json({ message: `${product.name} is out of stock` });
+            }
+
+            if (item.quantity > product.stock) {
+                return res.status(400).json({ message: `${product.name} only has ${product.stock} item(s) left in stock` });
+            }
+        }
+
         const subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const shippingCost = 2;
         const tax = 0;
@@ -74,6 +91,17 @@ router.post("/", authMiddleware, async (req, res) => {
             tax,
             totalAmount: subtotal + shippingCost + tax,
         });
+
+        await Promise.all(
+            cart.items.map((item) => {
+                const nextStock = Math.max(0, item.product.stock - item.quantity);
+
+                return Product.findByIdAndUpdate(item.product._id, {
+                    stock: nextStock,
+                    isActive: nextStock > 0,
+                });
+            })
+        );
 
         cart.items = [];
         cart.totalAmount = 0;

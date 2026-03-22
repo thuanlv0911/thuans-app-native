@@ -4,6 +4,18 @@ const { authMiddleware, authorizeRoles } = require("../middleware/auth.middlewar
 
 const router = express.Router();
 
+const normalizeProductPayload = (payload = {}) => {
+    const stock = Math.max(0, Number(payload.stock) || 0);
+
+    return {
+        ...payload,
+        stock,
+        isActive: stock > 0,
+        images: Array.isArray(payload.images) ? payload.images : [],
+        sizes: Array.isArray(payload.sizes) ? payload.sizes : [],
+    };
+};
+
 router.get("/", async (req, res) => {
     try {
         const {
@@ -19,7 +31,7 @@ router.get("/", async (req, res) => {
 
         const pageNumber = Math.max(1, Number(page) || 1);
         const limitNumber = Math.max(1, Number(limit) || 10);
-        const query = { isActive: true };
+        const query = {};
 
         if (category) {
             const categories = String(category)
@@ -69,7 +81,11 @@ router.get("/", async (req, res) => {
             name_desc: { name: -1, createdAt: -1 },
         };
 
-        const sort = sortMap[sortBy] || sortMap.newest;
+        const sort = {
+            isActive: -1,
+            stock: -1,
+            ...(sortMap[sortBy] || sortMap.newest),
+        };
 
         const [products, total] = await Promise.all([
             Product.find(query)
@@ -96,7 +112,7 @@ router.get("/", async (req, res) => {
 
 router.get("/categories", async (req, res) => {
     try {
-        const categories = await Product.distinct("category", { isActive: true });
+        const categories = await Product.distinct("category");
         return res.json({ categories });
     } catch (error) {
         return res.status(500).json({ message: "Failed to fetch categories" });
@@ -119,11 +135,7 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", authMiddleware, authorizeRoles("admin"), async (req, res) => {
     try {
-        const product = await Product.create({
-            ...req.body,
-            images: Array.isArray(req.body.images) ? req.body.images : [],
-            sizes: Array.isArray(req.body.sizes) ? req.body.sizes : [],
-        });
+        const product = await Product.create(normalizeProductPayload(req.body));
 
         return res.status(201).json({ product });
     } catch (error) {
@@ -135,11 +147,7 @@ router.put("/:id", authMiddleware, authorizeRoles("admin"), async (req, res) => 
     try {
         const product = await Product.findByIdAndUpdate(
             req.params.id,
-            {
-                ...req.body,
-                images: Array.isArray(req.body.images) ? req.body.images : [],
-                sizes: Array.isArray(req.body.sizes) ? req.body.sizes : [],
-            },
+            normalizeProductPayload(req.body),
             { new: true }
         );
 

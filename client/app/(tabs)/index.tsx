@@ -6,24 +6,33 @@ import { BANNERS } from '@/src/constants';
 import { apiRequest } from '@/src/services/api';
 import { Product } from '@/src/types';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width } = Dimensions.get("window")
+const { width } = Dimensions.get("window");
 
 export default function Home() {
-
   const router = useRouter();
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const popularProducts = useMemo(
+    () => products.filter((product) => product.stock > 0 && product.isActive).slice(0, 4),
+    [products]
+  );
+
+  const outOfStockProducts = useMemo(
+    () => products.filter((product) => product.stock <= 0 || !product.isActive).slice(0, 4),
+    [products]
+  );
+
   const fetchProducts = async () => {
     try {
       const [productsData, categoriesData] = await Promise.all([
-        apiRequest<{ products: Product[] }>('/products?featured=true&limit=4'),
+        apiRequest<{ products: Product[] }>('/products?featured=true&limit=20'),
         apiRequest<{ categories: string[] }>('/products/categories'),
       ]);
 
@@ -43,64 +52,69 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     fetchProducts();
-  }, [])
+  }, []);
 
   return (
     <SafeAreaView className='flex-1' edges={['top']}>
       <Header title='Nodaco' showMenu showCart showLogo />
       <ScrollView className='flex-1 px-4' showsVerticalScrollIndicator={false}>
-        {/* Banner */}
         <View className='mb-6'>
-          <ScrollView horizontal pagingEnabled
+          <ScrollView
+            horizontal
+            pagingEnabled
             showsHorizontalScrollIndicator={false}
-            className='w-full h-48 rounded-xl' scrollEventThrottle={16}
+            className='w-full h-48 rounded-xl'
+            scrollEventThrottle={16}
             onScroll={(e) => {
-              const slide = Math.ceil(e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width)
+              const slide = Math.ceil(e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width);
               if (slide !== activeBannerIndex) {
                 setActiveBannerIndex(slide);
               }
-            }}>
+            }}
+          >
             {BANNERS.map((banner, index) => (
               <View key={index} className='relative w-full h-48 bg-gray-200 overflow-hidden' style={{ width: width - 32 }}>
-                <Image source={{ uri: banner.image }}
-                  className='w-full h-full' resizeMode='cover' />
+                <Image source={{ uri: banner.image }} className='w-full h-full' resizeMode='cover' />
                 <View className='absolute inset-0 bg-black/40' />
 
                 <View className='absolute bottom-4 left-4 z-10'>
                   <Text className='text-white text-2xl font-bold'>{banner.title}</Text>
                   <Text className='text-white text-sm font-medium'>{banner.subtitle}</Text>
-                  <TouchableOpacity className='mt-3 bg-white px-4 py-2 rounded-full self-start'
-                    onPress={() => router.push('/shop')}>
-                    <Text className='text-primary font-bold text text-xs'>GET NOW</Text>
+                  <TouchableOpacity className='mt-3 bg-white px-4 py-2 rounded-full self-start' onPress={() => router.push('/shop')}>
+                    <Text className='text-primary font-bold text-xs'>GET NOW</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ))}
           </ScrollView>
-          {/* Pagination Dots */}
+
           <View className='flex-row justify-center mt-3 gap-2'>
             {BANNERS.map((_, index) => (
               <View key={index} className={`h-2 rounded-full ${index === activeBannerIndex ? 'w-6 bg-primary' : 'w-2 bg-gray-300'}`} />
             ))}
           </View>
         </View>
-        {/* Categories */}
+
         <View className='mb-6'>
           <View className='flex-row justify-between items-center mb-4'>
             <Text className='text-xl font-bold text-primary'>Categories</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {categories.map((cat: any) => (
-              <CategoryItem key={cat.id} item={cat} isSelected={false} onPress={() => router.push({ pathname: "/shop", params: { category: cat.id === 'all' ? '' : cat.name } })} />
+              <CategoryItem
+                key={cat.id}
+                item={cat}
+                isSelected={false}
+                onPress={() => router.push({ pathname: "/shop", params: { category: cat.id === 'all' ? '' : cat.name } })}
+              />
             ))}
           </ScrollView>
         </View>
 
-        {/* Popular products */}
         <View className='mb-8'>
           <View className='flex-row justify-between items-center mb-4'>
             <Text className='text-xl font-bold text-primary'>Popular</Text>
@@ -112,13 +126,28 @@ export default function Home() {
             <ActivityIndicator size='large' />
           ) : (
             <View className='flex-row flex-wrap justify-between'>
-              {products.slice(0, 4).map((product) => (
+              {popularProducts.map((product) => (
                 <ProductCard key={product._id} product={product} />
               ))}
             </View>
           )}
         </View>
 
+        {!loading && outOfStockProducts.length > 0 && (
+          <View className='mb-8'>
+            <View className='flex-row justify-between items-center mb-4'>
+              <Text className='text-xl font-bold text-primary'>Out of Stock</Text>
+              <TouchableOpacity onPress={() => router.push('/shop')}>
+                <Text className='text-secondary text-sm'>Browse Shop</Text>
+              </TouchableOpacity>
+            </View>
+            <View className='flex-row flex-wrap justify-between'>
+              {outOfStockProducts.map((product) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
+            </View>
+          </View>
+        )}
 
         <View className='bg-gray-100 p-6 rounded-2xl mb-20 items-center'>
           <Text className='text-2xl font-bold text-primary mb-2 text-center'>Join in Revolution</Text>
@@ -129,5 +158,5 @@ export default function Home() {
         </View>
       </ScrollView>
     </SafeAreaView>
-  )
+  );
 }

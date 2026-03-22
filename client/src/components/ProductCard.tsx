@@ -13,6 +13,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     const { isAuthenticated } = useAuth();
     const router = useRouter();
     const isLiked = isInWishlist(product._id);
+    const isOutOfStock = product.stock <= 0 || !product.isActive;
 
     const handleWishlistPress = async (e: any) => {
         e.stopPropagation();
@@ -45,6 +46,12 @@ export default function ProductCard({ product }: ProductCardProps) {
                     {product.isFeatured && (
                         <View className='absolute top-2 left-2 bg-black px-2 py-1 rounded'>
                             <Text className='text-white text-xs font-bold uppercase'>Featured</Text>
+                        </View>
+                    )}
+
+                    {isOutOfStock && (
+                        <View className='absolute bottom-2 left-2 bg-red-500 px-2 py-1 rounded'>
+                            <Text className='text-white text-xs font-bold uppercase'>Out of stock</Text>
                         </View>
                     )}
                 </View>

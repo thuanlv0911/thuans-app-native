@@ -66,6 +66,7 @@ export default function ProductDetails() {
   }
 
   const isLiked = isInWishlist(product._id);
+  const isOutOfStock = product.stock <= 0 || !product.isActive;
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
@@ -78,12 +79,24 @@ export default function ProductDetails() {
       return;
     }
 
-    await addToCart(product, selectedSize);
-    Toast.show({
-      type: "success",
-      text1: "Added to cart",
-      text2: `${product.name} (${selectedSize})`,
-    });
+    if (isOutOfStock) {
+      Toast.show({
+        type: "info",
+        text1: "Out of stock",
+        text2: "This product is currently unavailable for purchase."
+      });
+      return;
+    }
+
+    const added = await addToCart(product, selectedSize);
+
+    if (added) {
+      Toast.show({
+        type: "success",
+        text1: "Added to cart",
+        text2: `${product.name} (${selectedSize})`,
+      });
+    }
   };
 
   const handleToggleWishlist = async () => {
@@ -170,6 +183,12 @@ export default function ProductDetails() {
             ${product.price.toFixed(2)}
           </Text>
 
+          {isOutOfStock && (
+            <View className="self-start bg-red-50 border border-red-100 px-3 py-2 rounded-full mb-5">
+              <Text className="text-red-600 font-bold uppercase text-xs">Out of stock</Text>
+            </View>
+          )}
+
           {product.sizes && product.sizes.length > 0 && (
             <View className="mb-8">
               <Text className="text-base font-bold text-primary mb-3">Size</Text>
@@ -206,11 +225,12 @@ export default function ProductDetails() {
       <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 flex-row items-center">
         <TouchableOpacity
           onPress={handleAddToCart}
-          className="flex-1 py-4 rounded-full items-center shadow-md flex-row justify-center bg-primary"
+          disabled={isOutOfStock}
+          className={`flex-1 py-4 rounded-full items-center shadow-md flex-row justify-center ${isOutOfStock ? 'bg-gray-400' : 'bg-primary'}`}
         >
           <Ionicons name="bag-outline" size={22} color="white" />
           <Text className="text-white font-bold text-base ml-3">
-            {isAuthenticated ? "Add to cart" : "Log in to buy"}
+            {isOutOfStock ? "Out of stock" : isAuthenticated ? "Add to cart" : "Log in to buy"}
           </Text>
         </TouchableOpacity>
 

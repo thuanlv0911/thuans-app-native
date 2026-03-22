@@ -51,8 +51,8 @@ export default function Orders() {
 
             {!isAuthenticated ? (
                 <AuthRequiredState
-                    title="Order can dang nhap"
-                    description="Dang nhap de xem don hang va lich su mua sam cua ban."
+                    title="Login to view your orders"
+                    description="Please log in to view your orders and order history."
                 />
             ) : loading ? (
                 <View className="flex-1 justify-center items-center">
