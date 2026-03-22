@@ -105,6 +105,7 @@ export interface Order {
     totalAmount: number;
     notes?: string;
     deliveredAt?: string;
+    customerConfirmedAt?: string;
     createdAt: string;
 }
 

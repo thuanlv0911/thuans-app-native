@@ -8,6 +8,7 @@ const cartRoutes = require("./routes/cart.routes");
 const wishlistRoutes = require("./routes/wishlist.routes");
 const orderRoutes = require("./routes/order.routes");
 const adminRoutes = require("./routes/admin.routes");
+const addressRoutes = require("./routes/address.routes");
 
 const app = express();
 
@@ -22,7 +23,7 @@ app.get("/", async (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
-app.use("/api/addresses", require("./routes/address.routes"));
+app.use("/api/addresses", addressRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);

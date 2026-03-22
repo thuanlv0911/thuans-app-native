@@ -7,8 +7,8 @@ import { useAuth } from "@/src/context/AuthContext";
 import { apiRequest } from "@/src/services/api";
 import { Order } from "@/src/types";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -18,22 +18,31 @@ export default function Orders() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchOrders = async () => {
+    const fetchOrders = useCallback(async () => {
         try {
             const data = await apiRequest<{ orders: Order[] }>('/orders', { token });
             setOrders(data.orders || []);
         } finally {
             setLoading(false);
         }
-    };
+    }, [token]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (!isAuthenticated) {
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true);
+            fetchOrders();
+        }, [fetchOrders, isAuthenticated])
+    );
 
     useEffect(() => {
         if (!isAuthenticated) {
             setLoading(false);
-            return;
         }
-
-        fetchOrders();
     }, [isAuthenticated]);
 
     return (
