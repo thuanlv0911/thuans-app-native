@@ -4,14 +4,20 @@ import { useAuth } from '@/src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 
 export default function Profile() {
-    const { user, isLoading, isAdmin, signOut } = useAuth();
+    const { user, isLoading, signOut, updateName } = useAuth();
+    const [isEditingName, setIsEditingName] = React.useState(false);
+    const [nameInput, setNameInput] = React.useState(user?.name || '');
     const router = useRouter();
+
+    React.useEffect(() => {
+        setNameInput(user?.name || '');
+    }, [user?.name]);
 
     const handleSignOut = async () => {
         await signOut();
@@ -20,6 +26,26 @@ export default function Profile() {
             text1: 'Logged out',
             position: 'top',
         });
+    };
+
+    const handleSaveName = async () => {
+        const trimmedName = nameInput.trim();
+        if (!trimmedName) {
+            Toast.show({ type: 'error', text1: 'Tên không được để trống' });
+            return;
+        }
+
+        try {
+            await updateName(trimmedName);
+            setIsEditingName(false);
+            Toast.show({ type: 'success', text1: 'Updated name successfully.' });
+        } catch (error) {
+            Toast.show({
+                type: 'error',
+                text1: 'Unable to update name',
+                text2: error instanceof Error ? error.message : 'Please try again.',
+            });
+        }
     };
 
     if (isLoading) {
@@ -71,31 +97,38 @@ export default function Profile() {
             <Header title="Profile" showMenu showCart />
 
             <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingTop: 24, paddingBottom: 40 }}>
-                <View className="items-center mb-10">
+                <View className="items-center mb-10 w-full">
                     <View className="mb-3">
                         <Ionicons name="person-circle" size={80} color={COLORS.primary} />
                     </View>
-                    <Text className="text-2xl font-bold text-primary">
-                        {user.name || 'Người dùng'}
-                    </Text>
-                </View>
 
-                <View className="bg-gray-50 rounded-2xl p-5 mb-8">
-                    <Text className="text-sm uppercase tracking-wider text-gray-500 mb-4">User Information</Text>
-                    <Text className="text-base text-primary">Role: {user.role || 'Khách hàng'}</Text>
-                    <Text className="text-secondary text-base mt-1">Email: {user.email}</Text>
-                    {/* <Text className="text-base text-primary mt-2">ID: {user.id}</Text> */}
+                    {isEditingName ? (
+                        <View className="w-full px-8">
+                            <TextInput
+                                value={nameInput}
+                                onChangeText={setNameInput}
+                                className="border border-gray-200 bg-white rounded-full px-4 py-3 text-primary"
+                                placeholder="Enter your name"
+                            />
+                            <View className="flex-row justify-center mt-3 gap-3">
+                                <TouchableOpacity onPress={handleSaveName} className="bg-primary px-5 py-2 rounded-full">
+                                    <Text className="text-white font-semibold">Save</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => { setIsEditingName(false); setNameInput(user.name || ''); }} className="border border-gray-300 px-5 py-2 rounded-full">
+                                    <Text className="text-primary font-semibold">Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ) : (
+                        <>
+                            <Text className="text-2xl font-bold text-primary">{user.name || 'User'}</Text>
+                            <Text className="text-secondary text-base mt-1">Email: {user.email}</Text>
+                            <TouchableOpacity onPress={() => setIsEditingName(true)} className="mt-3 bg-primary px-6 py-2 rounded-full">
+                                <Text className="text-white font-semibold">Edit Name</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </View>
-
-                {isAdmin && (
-                    <TouchableOpacity
-                        className="mb-8 flex-row items-center justify-center rounded-2xl bg-primary p-4"
-                        onPress={() => router.push('/admin')}
-                    >
-                        <Ionicons name="shield-checkmark-outline" size={22} color="white" />
-                        <Text className="ml-3 text-lg font-bold text-white">Go to Admin</Text>
-                    </TouchableOpacity>
-                )}
 
                 {/* Menu */}
                 <View className="mb-6">

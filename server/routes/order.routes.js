@@ -32,7 +32,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
 
 router.post("/", authMiddleware, async (req, res) => {
     try {
-        const { addressId, paymentMethod = "cash" } = req.body;
+        const { addressId, paymentMethod = "cash", selectedItemIds = [] } = req.body;
         const [cart, address] = await Promise.all([
             Cart.findOne({ user: req.user._id }).populate("items.product"),
             Address.findOne({ _id: addressId, userId: req.user._id }),
@@ -46,7 +46,19 @@ router.post("/", authMiddleware, async (req, res) => {
             return res.status(400).json({ message: "Cart is empty" });
         }
 
-        for (const item of cart.items) {
+        const normalizedSelectedIds = Array.isArray(selectedItemIds)
+            ? selectedItemIds.map((itemId) => String(itemId))
+            : [];
+
+        const itemsToOrder = normalizedSelectedIds.length > 0
+            ? cart.items.filter((item) => normalizedSelectedIds.includes(String(item._id)))
+            : cart.items;
+
+        if (itemsToOrder.length === 0) {
+            return res.status(400).json({ message: "No cart items selected for checkout" });
+        }
+
+        for (const item of itemsToOrder) {
             const product = item.product;
 
             if (!product) {
@@ -62,14 +74,14 @@ router.post("/", authMiddleware, async (req, res) => {
             }
         }
 
-        const subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const subtotal = itemsToOrder.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const shippingCost = 2;
         const tax = 0;
 
         const order = await Order.create({
             user: req.user._id,
             orderNumber: `ORD-${Date.now()}`,
-            items: cart.items.map((item) => ({
+            items: itemsToOrder.map((item) => ({
                 product: item.product._id,
                 name: item.product.name,
                 quantity: item.quantity,
@@ -93,7 +105,7 @@ router.post("/", authMiddleware, async (req, res) => {
         });
 
         await Promise.all(
-            cart.items.map((item) => {
+            itemsToOrder.map((item) => {
                 const nextStock = Math.max(0, item.product.stock - item.quantity);
 
                 return Product.findByIdAndUpdate(item.product._id, {
@@ -103,8 +115,8 @@ router.post("/", authMiddleware, async (req, res) => {
             })
         );
 
-        cart.items = [];
-        cart.totalAmount = 0;
+        cart.items = cart.items.filter((item) => !itemsToOrder.some((selectedItem) => String(selectedItem._id) === String(item._id)));
+        cart.totalAmount = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
         await cart.save();
 
         return res.status(201).json({ order });
