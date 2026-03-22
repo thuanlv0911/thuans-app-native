@@ -22,7 +22,7 @@ export default function Header({ title, showBack, showSearch, showCart, showMenu
                     </TouchableOpacity>
                 )}
                 {showMenu && (
-                    <TouchableOpacity onPress={() => router.back()}
+                    <TouchableOpacity onPress={() => router.push('/(tabs)')}
                         className='mr-3'>
                         <Ionicons name='menu-outline' size={28} color={COLORS.primary} />
                     </TouchableOpacity>

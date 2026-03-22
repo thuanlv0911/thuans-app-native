@@ -34,8 +34,12 @@ router.post("/items", authMiddleware, async (req, res) => {
         const { productId, size, quantity = 1 } = req.body;
         const product = await Product.findById(productId);
 
-        if (!product || !product.isActive) {
+        if (!product) {
             return res.status(404).json({ message: "Product not found" });
+        }
+
+        if (product.stock <= 0 || !product.isActive) {
+            return res.status(400).json({ message: "Product is out of stock" });
         }
 
         let cart = await Cart.findOne({ user: req.user._id });
@@ -49,11 +53,23 @@ router.post("/items", authMiddleware, async (req, res) => {
         );
 
         if (existingItem) {
-            existingItem.quantity += Number(quantity) || 1;
+            const nextQuantity = existingItem.quantity + (Number(quantity) || 1);
+
+            if (nextQuantity > product.stock) {
+                return res.status(400).json({ message: "Requested quantity exceeds available stock" });
+            }
+
+            existingItem.quantity = nextQuantity;
         } else {
+            const itemQuantity = Number(quantity) || 1;
+
+            if (itemQuantity > product.stock) {
+                return res.status(400).json({ message: "Requested quantity exceeds available stock" });
+            }
+
             cart.items.push({
                 product: product._id,
-                quantity: Number(quantity) || 1,
+                quantity: itemQuantity,
                 size: size || product.sizes?.[0] || "M",
                 price: product.price,
             });
@@ -72,10 +88,17 @@ router.post("/items", authMiddleware, async (req, res) => {
 router.put("/items", authMiddleware, async (req, res) => {
     try {
         const { productId, size, quantity } = req.body;
-        const cart = await Cart.findOne({ user: req.user._id });
+        const [cart, product] = await Promise.all([
+            Cart.findOne({ user: req.user._id }),
+            Product.findById(productId),
+        ]);
 
         if (!cart) {
             return res.status(404).json({ message: "Cart not found" });
+        }
+
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
         }
 
         const item = cart.items.find(
@@ -91,6 +114,14 @@ router.put("/items", authMiddleware, async (req, res) => {
                 (entry) => !(String(entry.product) === productId && entry.size === size)
             );
         } else {
+            if (product.stock <= 0 || !product.isActive) {
+                return res.status(400).json({ message: "Product is out of stock" });
+            }
+
+            if (Number(quantity) > product.stock) {
+                return res.status(400).json({ message: "Requested quantity exceeds available stock" });
+            }
+
             item.quantity = Number(quantity);
         }
 

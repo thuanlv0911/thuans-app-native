@@ -6,13 +6,14 @@ import { useCart } from '@/src/context/CartContext';
 import { apiRequest } from '@/src/services/api';
 import { Address } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 export default function Checkout() {
+    const params = useLocalSearchParams<{ selectedAddressId?: string }>();
     const { isAuthenticated, token } = useAuth();
     const { cartItems, cartTotal, clearCart } = useCart();
     const router = useRouter();
@@ -41,16 +42,15 @@ export default function Checkout() {
             }
 
             const data = await apiRequest<{ addresses: Address[] }>('/addresses', { token });
-            const addressList: Address[] = data.addresses ?? [];
-            setAddresses(addressList);
-            setSelectedAddressId((currentValue) => {
-                if (currentValue && addressList.some((address) => address._id === currentValue)) {
-                    return currentValue;
-                }
+            const addressList = data.addresses ?? [];
+            const requestedAddressId = typeof params.selectedAddressId === 'string' ? params.selectedAddressId : null;
+            const requestedAddress = requestedAddressId
+                ? addressList.find((address) => address._id === requestedAddressId)
+                : null;
+            const defaultAddress = addressList.find((address) => address.isDefault) || addressList[0] || null;
 
-                const defaultAddress = addressList.find((address) => address.isDefault) || addressList[0];
-                return defaultAddress?._id ?? null;
-            });
+            setAddresses(addressList);
+            setSelectedAddressId(requestedAddress?._id || defaultAddress?._id || null);
         } catch (error) {
             console.warn('fetchAddresses:', error);
             setAddresses([]);
@@ -58,7 +58,7 @@ export default function Checkout() {
         } finally {
             setPageLoading(false);
         }
-    }, [token]);
+    }, [params.selectedAddressId, token]);
 
     const handlePlaceOrder = async () => {
         if (cartItems.length === 0) {
@@ -141,69 +141,50 @@ export default function Checkout() {
                     <ScrollView className='flex-1 px-4 mt-4'>
                         <View className='flex-row items-center justify-between mb-4'>
                             <Text className='text-lg font-bold text-primary'>Shipping Address</Text>
-                            <TouchableOpacity onPress={() => router.push('/addresses')}>
+                            <TouchableOpacity
+                                onPress={() => router.push({
+                                    pathname: '/addresses',
+                                    params: {
+                                        select: 'true',
+                                        selectedAddressId: selectedAddressId || '',
+                                    },
+                                })}
+                            >
                                 <Text className='text-accent text-sm font-medium'>
-                                    {addresses.length > 0 ? 'Manage' : 'Add Address'}
+                                    {selectedAddress ? 'Change' : 'Add Address'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
 
-                        {addresses.length > 0 ? (
-                            <View className='mb-6'>
-                                {addresses.map((address) => {
-                                    const isSelected = selectedAddressId === address._id;
-
-                                    return (
-                                        <TouchableOpacity
-                                            key={address._id}
-                                            className={`bg-white p-4 rounded-xl mb-3 shadow-sm border ${isSelected ? 'border-primary' : 'border-gray-100'}`}
-                                            onPress={() => setSelectedAddressId(address._id)}
-                                        >
-                                            <View className='flex-row items-start justify-between mb-2'>
-                                                <View className='flex-row items-center flex-1 pr-3'>
-                                                    <Ionicons
-                                                        name={isSelected ? 'radio-button-on' : 'radio-button-off'}
-                                                        size={20}
-                                                        color={isSelected ? COLORS.primary : COLORS.secondary}
-                                                    />
-                                                    <Text className='text-base font-bold text-primary ml-2'>{address.type}</Text>
-                                                    {address.isDefault && (
-                                                        <View className='bg-primary/10 px-2 py-1 rounded ml-2'>
-                                                            <Text className='text-primary text-xs font-bold'>Default</Text>
-                                                        </View>
-                                                    )}
-                                                </View>
-                                                {isSelected && (
-                                                    <Text className='text-primary text-xs font-bold uppercase'>Selected</Text>
-                                                )}
+                        {selectedAddress ? (
+                            <View className='bg-white p-4 rounded-xl mb-6 shadow-sm border border-gray-100'>
+                                <View className='flex-row items-center justify-between mb-2'>
+                                    <View className='flex-row items-center'>
+                                        <Ionicons name='location-outline' size={20} color={COLORS.primary} />
+                                        <Text className='text-base font-bold text-primary ml-2'>{selectedAddress.type}</Text>
+                                        {selectedAddress.isDefault && (
+                                            <View className='bg-primary/10 px-2 py-1 rounded ml-2'>
+                                                <Text className='text-primary text-xs font-bold'>Default</Text>
                                             </View>
-                                            <Text className='text-secondary leading-5 ml-7'>
-                                                {address.thonToDanPho}, {address.xaPhuong}
-                                                {address.quanHuyen ? `, ${address.quanHuyen}` : ''}
-                                                {`, ${address.tinhThanh}`}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        ) : (
-                            <TouchableOpacity
-                                onPress={() => router.push('/addresses')}
-                                className='bg-white p-6 rounded-xl mb-6 items-center justify-center border-dashed border-2 border-gray-100'
-                            >
-                                <Text className='text-primary font-bold'>Add Address</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {selectedAddress && (
-                            <View className='bg-primary/5 rounded-xl p-4 mb-6'>
-                                <Text className='text-primary font-bold mb-1'>Deliver to</Text>
-                                <Text className='text-secondary leading-5'>
+                                        )}
+                                    </View>
+                                </View>
+                                <Text className='text-secondary leading-5 ml-7'>
                                     {selectedAddress.thonToDanPho}, {selectedAddress.xaPhuong}
                                     {selectedAddress.quanHuyen ? `, ${selectedAddress.quanHuyen}` : ''}
                                     {`, ${selectedAddress.tinhThanh}`}
                                 </Text>
                             </View>
+                        ) : (
+                            <TouchableOpacity
+                                onPress={() => router.push({
+                                    pathname: '/addresses',
+                                    params: { select: 'true' },
+                                })}
+                                className='bg-white p-6 rounded-xl mb-6 items-center justify-center border-dashed border-2 border-gray-100'
+                            >
+                                <Text className='text-primary font-bold'>Add Address</Text>
+                            </TouchableOpacity>
                         )}
 
                         <Text className='text-primary text-lg font-bold mb-4'>Payment Method</Text>

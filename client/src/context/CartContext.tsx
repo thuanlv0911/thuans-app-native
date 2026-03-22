@@ -16,9 +16,9 @@ export type CartItem = {
 
 type CartContextType = {
     cartItems: CartItem[],
-    addToCart: (product: Product, size: string) => Promise<void>;
+    addToCart: (product: Product, size: string) => Promise<boolean>;
     removeFromCart: (itemId: string, size: string) => Promise<void>;
-    updateQuantity: (itemId: string, quantity: number, size: string) => Promise<void>;
+    updateQuantity: (itemId: string, quantity: number, size: string) => Promise<boolean>;
     clearCart: () => Promise<void>;
     cartTotal: number;
     itemCount: number;
@@ -86,7 +86,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const addToCart = async (product: Product, size: string) => {
         if (!ensureAuthenticated()) {
-            return;
+            return false;
+        }
+
+        if (product.stock <= 0 || !product.isActive) {
+            Toast.show({
+                type: "info",
+                text1: "Out of stock",
+                text2: "This product is currently unavailable.",
+            });
+            return false;
+        }
+
+        const existingItem = cartItems.find((item) => item.productId === product._id && item.size === size);
+        const nextQuantity = (existingItem?.quantity || 0) + 1;
+
+        if (nextQuantity > product.stock) {
+            Toast.show({
+                type: "error",
+                text1: "Stock limit reached",
+                text2: `Only ${product.stock} item(s) available.`,
+            });
+            return false;
         }
 
         await apiRequest("/cart/items", {
@@ -96,6 +117,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         });
 
         await fetchCart();
+        return true;
     }
     const removeFromCart = async (productId: string, size: string) => {
         if (!ensureAuthenticated()) {
@@ -113,12 +135,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const updateQuantity = async (productId: string, quantity: number, size: string = "M") => {
         if (!ensureAuthenticated()) {
-            return;
+            return false;
         }
 
         if (quantity <= 0) {
             await removeFromCart(productId, size);
-            return;
+            return true;
+        }
+
+        const cartItem = cartItems.find((item) => item.productId === productId && item.size === size);
+
+        if (cartItem && quantity > cartItem.product.stock) {
+            Toast.show({
+                type: "error",
+                text1: "Stock limit reached",
+                text2: `Only ${cartItem.product.stock} item(s) available.`,
+            });
+            return false;
         }
 
         await apiRequest("/cart/items", {
@@ -128,6 +161,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         });
 
         await fetchCart();
+        return true;
     }
 
     const clearCart = async () => {
