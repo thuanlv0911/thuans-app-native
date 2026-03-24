@@ -181,7 +181,7 @@ export default function Home() {
           {loading ? (
             <ActivityIndicator size='large' />
           ) : outOfStockProducts.length === 0 ? (
-            <Text className='text-secondary'>Không có sản phẩm hết hàng.</Text>
+            <Text className='text-secondary'>No products are out of stock.</Text>
           ) : (
             <View className='flex-row flex-wrap justify-between'>
               {outOfStockProducts.map((product) => (
