@@ -3,19 +3,20 @@ import Header from '@/src/components/Header';
 import { useAuth } from '@/src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
+const { width } = Dimensions.get('window');
 
 export default function Profile() {
     const { user, isLoading, signOut, updateName } = useAuth();
-    const [isEditingName, setIsEditingName] = React.useState(false);
-    const [nameInput, setNameInput] = React.useState(user?.name || '');
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [nameInput, setNameInput] = useState(user?.name || '');
     const router = useRouter();
 
-    React.useEffect(() => {
+    useEffect(() => {
         setNameInput(user?.name || '');
     }, [user?.name]);
 
@@ -23,7 +24,7 @@ export default function Profile() {
         await signOut();
         Toast.show({
             type: 'success',
-            text1: 'Logged out',
+            text1: 'Logged out successfully',
             position: 'top',
         });
     };
@@ -31,14 +32,14 @@ export default function Profile() {
     const handleSaveName = async () => {
         const trimmedName = nameInput.trim();
         if (!trimmedName) {
-            Toast.show({ type: 'error', text1: 'Tên không được để trống' });
+            Toast.show({ type: 'error', text1: 'Name cannot be empty' });
             return;
         }
 
         try {
             await updateName(trimmedName);
             setIsEditingName(false);
-            Toast.show({ type: 'success', text1: 'Updated name successfully.' });
+            Toast.show({ type: 'success', text1: 'Name updated successfully' });
         } catch (error) {
             Toast.show({
                 type: 'error',
@@ -56,105 +57,249 @@ export default function Profile() {
         );
     }
 
+    // Guest View
     if (!user) {
         return (
             <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
                 <Header title="Profile" showMenu showCart />
-                <ScrollView
-                    className="flex-1 px-4"
-                    contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-                >
-                    <View className="items-center w-full">
-                        <View className="mb-6">
-                            <Ionicons name="person" size={64} color={COLORS.secondary} />
+                <View className='flex-1 px-6 justify-center'>
+                    {/* Illustration */}
+                    <View className='items-center mb-8'>
+                        <View 
+                            className='w-28 h-28 bg-white rounded-full items-center justify-center mb-6'
+                            style={{
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.08,
+                                shadowRadius: 16,
+                                elevation: 4,
+                            }}
+                        >
+                            <Ionicons name="person-outline" size={50} color={COLORS.secondary} />
                         </View>
-                        <Text className="text-primary font-bold text-2xl mb-3">Guest</Text>
-                        <Text className="text-secondary text-base mb-10 text-center w-4/5">
-                            Please log in to view your personal information, orders, and address
+                        <Text className="text-2xl font-bold text-primary mb-2">Welcome Guest</Text>
+                        <Text className="text-secondary text-center text-base leading-6 px-4">
+                            Sign in to access your orders, wishlist, and personalized recommendations
                         </Text>
+                    </View>
 
+                    {/* Actions */}
+                    <View className='gap-3'>
                         <TouchableOpacity
-                            className="bg-primary w-4/5 py-4 rounded-full items-center shadow-md"
+                            className="bg-primary py-4 rounded-2xl items-center flex-row justify-center"
+                            style={{
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.15,
+                                shadowRadius: 12,
+                                elevation: 4,
+                            }}
                             onPress={() => router.push('/sign-in')}
                         >
-                            <Text className="text-white font-bold text-lg">Login / Register</Text>
+                            <Ionicons name="log-in-outline" size={20} color="#FFF" />
+                            <Text className="text-white font-bold text-base ml-2">Sign In</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            className="mt-4 border border-gray-300 w-4/5 py-4 rounded-full items-center"
+                            className="bg-white py-4 rounded-2xl items-center flex-row justify-center border border-gray-100"
                             onPress={() => router.push('/sign-up')}
                         >
-                            <Text className="text-primary font-semibold text-lg">Create new account</Text>
+                            <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
+                            <Text className="text-primary font-semibold text-base ml-2">Create Account</Text>
                         </TouchableOpacity>
                     </View>
-                </ScrollView>
+
+                    {/* Features */}
+                    <View className='mt-10'>
+                        <Text className='text-secondary text-sm text-center mb-4'>Why create an account?</Text>
+                        <View className='flex-row justify-center gap-6'>
+                            {[
+                                { icon: 'heart-outline', label: 'Wishlist' },
+                                { icon: 'receipt-outline', label: 'Orders' },
+                                { icon: 'gift-outline', label: 'Rewards' },
+                            ].map((item, index) => (
+                                <View key={index} className='items-center'>
+                                    <View className='w-12 h-12 bg-white rounded-xl items-center justify-center mb-2'>
+                                        <Ionicons name={item.icon as any} size={22} color={COLORS.primary} />
+                                    </View>
+                                    <Text className='text-secondary text-xs'>{item.label}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                </View>
             </SafeAreaView>
         );
     }
 
+    // Logged In View
     return (
         <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
             <Header title="Profile" showMenu showCart />
 
-            <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingTop: 24, paddingBottom: 40 }}>
-                <View className="items-center mb-10 w-full">
-                    <View className="mb-3">
-                        <Ionicons name="person-circle" size={80} color={COLORS.primary} />
-                    </View>
-
-                    {isEditingName ? (
-                        <View className="w-full px-8">
-                            <TextInput
-                                value={nameInput}
-                                onChangeText={setNameInput}
-                                className="border border-gray-200 bg-white rounded-full px-4 py-3 text-primary"
-                                placeholder="Enter your name"
-                            />
-                            <View className="flex-row justify-center mt-3 gap-3">
-                                <TouchableOpacity onPress={handleSaveName} className="bg-primary px-5 py-2 rounded-full">
-                                    <Text className="text-white font-semibold">Save</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={() => { setIsEditingName(false); setNameInput(user.name || ''); }} className="border border-gray-300 px-5 py-2 rounded-full">
-                                    <Text className="text-primary font-semibold">Cancel</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    ) : (
-                        <>
-                            <Text className="text-2xl font-bold text-primary">{user.name || 'User'}</Text>
-                            <Text className="text-secondary text-base mt-1">Email: {user.email}</Text>
-                            <TouchableOpacity onPress={() => setIsEditingName(true)} className="mt-3 bg-primary px-6 py-2 rounded-full">
-                                <Text className="text-white font-semibold">Edit Name</Text>
-                            </TouchableOpacity>
-                        </>
-                    )}
-                </View>
-
-                {/* Menu */}
-                <View className="mb-6">
-                    {PROFILE_MENU.map((item, index) => (
-                        <TouchableOpacity
-                            key={item.id}
-                            className={`flex-row items-center p-4 ${index !== PROFILE_MENU.length - 1 ? 'border-b border-gray-100' : ''
-                                }`}
-                            onPress={() => router.push(item.route as any)}
+            <ScrollView 
+                className="flex-1" 
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 40 }}
+            >
+                {/* Profile Header */}
+                <View className='bg-primary mx-4 mt-4 rounded-3xl p-6'>
+                    <View className='flex-row items-center'>
+                        <View 
+                            className='w-20 h-20 bg-white rounded-2xl items-center justify-center mr-4'
+                            style={{
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 8,
+                            }}
                         >
-                            <View className="w-11 h-11 bg-white rounded-full items-center justify-center mr-4 shadow-sm">
-                                <Ionicons name={item.icon as any} size={22} color={COLORS.primary} />
-                            </View>
-                            <Text className="flex-1 text-primary font-medium text-base">{item.title}</Text>
-                            <Ionicons name="chevron-forward" size={22} color={COLORS.secondary} />
-                        </TouchableOpacity>
-                    ))}
+                            <Text className='text-primary text-3xl font-bold'>
+                                {(user.name || 'U').charAt(0).toUpperCase()}
+                            </Text>
+                        </View>
+                        <View className='flex-1'>
+                            {isEditingName ? (
+                                <View>
+                                    <TextInput
+                                        value={nameInput}
+                                        onChangeText={setNameInput}
+                                        className="bg-white/20 rounded-xl px-4 py-2.5 text-white"
+                                        placeholderTextColor="rgba(255,255,255,0.6)"
+                                        placeholder="Enter your name"
+                                        autoFocus
+                                    />
+                                    <View className='flex-row mt-2 gap-2'>
+                                        <TouchableOpacity 
+                                            onPress={handleSaveName} 
+                                            className='bg-white px-4 py-1.5 rounded-full'
+                                        >
+                                            <Text className='text-primary font-semibold text-sm'>Save</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            onPress={() => { setIsEditingName(false); setNameInput(user.name || ''); }} 
+                                            className='bg-white/20 px-4 py-1.5 rounded-full'
+                                        >
+                                            <Text className='text-white font-semibold text-sm'>Cancel</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ) : (
+                                <>
+                                    <View className='flex-row items-center'>
+                                        <Text className='text-white text-xl font-bold mr-2'>
+                                            {user.name || 'User'}
+                                        </Text>
+                                        <TouchableOpacity 
+                                            onPress={() => setIsEditingName(true)}
+                                            className='bg-white/20 p-1.5 rounded-full'
+                                        >
+                                            <Ionicons name='pencil' size={14} color='#FFF' />
+                                        </TouchableOpacity>
+                                    </View>
+                                    <Text className='text-white/70 text-sm mt-1'>{user.email}</Text>
+                                </>
+                            )}
+                        </View>
+                    </View>
                 </View>
 
-                <TouchableOpacity
-                    className="flex-row items-center justify-center p-5 bg-white rounded-2xl shadow-sm"
-                    onPress={handleSignOut}
-                >
-                    <Ionicons name="log-out-outline" size={24} color="#ef4444" />
-                    <Text className="text-red-500 font-bold text-lg ml-3">Logout</Text>
-                </TouchableOpacity>
+                {/* Quick Stats */}
+                <View className='flex-row mx-4 mt-4 gap-3'>
+                    <TouchableOpacity 
+                        className='flex-1 bg-white rounded-2xl p-4 items-center'
+                        style={{
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.04,
+                            shadowRadius: 8,
+                            elevation: 2,
+                        }}
+                        onPress={() => router.push('/orders')}
+                    >
+                        <View className='w-10 h-10 bg-blue-50 rounded-xl items-center justify-center mb-2'>
+                            <Ionicons name='receipt-outline' size={20} color='#3B82F6' />
+                        </View>
+                        <Text className='text-primary font-semibold'>Orders</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        className='flex-1 bg-white rounded-2xl p-4 items-center'
+                        style={{
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.04,
+                            shadowRadius: 8,
+                            elevation: 2,
+                        }}
+                        onPress={() => router.push('/addresses')}
+                    >
+                        <View className='w-10 h-10 bg-green-50 rounded-xl items-center justify-center mb-2'>
+                            <Ionicons name='location-outline' size={20} color='#22C55E' />
+                        </View>
+                        <Text className='text-primary font-semibold'>Addresses</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        className='flex-1 bg-white rounded-2xl p-4 items-center'
+                        style={{
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.04,
+                            shadowRadius: 8,
+                            elevation: 2,
+                        }}
+                        onPress={() => router.push('/(tabs)/favorites')}
+                    >
+                        <View className='w-10 h-10 bg-red-50 rounded-xl items-center justify-center mb-2'>
+                            <Ionicons name='heart-outline' size={20} color='#EF4444' />
+                        </View>
+                        <Text className='text-primary font-semibold'>Wishlist</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Menu Items */}
+                <View className='mx-4 mt-6'>
+                    <Text className='text-secondary text-sm font-medium mb-3 px-1'>Account Settings</Text>
+                    <View 
+                        className='bg-white rounded-2xl overflow-hidden'
+                        style={{
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.04,
+                            shadowRadius: 8,
+                            elevation: 2,
+                        }}
+                    >
+                        {PROFILE_MENU.map((item, index) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                className={`flex-row items-center p-4 ${
+                                    index !== PROFILE_MENU.length - 1 ? 'border-b border-gray-50' : ''
+                                }`}
+                                onPress={() => router.push(item.route as any)}
+                            >
+                                <View className='w-10 h-10 bg-gray-50 rounded-xl items-center justify-center mr-3'>
+                                    <Ionicons name={item.icon as any} size={20} color={COLORS.primary} />
+                                </View>
+                                <Text className='flex-1 text-primary font-medium text-base'>{item.title}</Text>
+                                <Ionicons name='chevron-forward' size={20} color={COLORS.secondary} />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+                {/* Logout */}
+                <View className='mx-4 mt-6'>
+                    <TouchableOpacity
+                        className='flex-row items-center justify-center p-4 bg-red-50 rounded-2xl'
+                        onPress={handleSignOut}
+                    >
+                        <Ionicons name='log-out-outline' size={22} color='#EF4444' />
+                        <Text className='text-red-500 font-bold text-base ml-2'>Sign Out</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* App Version */}
+                <Text className='text-secondary/50 text-xs text-center mt-8'>Version 1.0.0</Text>
             </ScrollView>
         </SafeAreaView>
     );
