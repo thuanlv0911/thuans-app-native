@@ -24,7 +24,7 @@ export default function Header({ title, showBack, showSearch, showCart, showMenu
                 {showMenu && (
                     <TouchableOpacity onPress={() => router.push('/(tabs)')}
                         className='mr-3'>
-                        <Ionicons name='menu-outline' size={28} color={COLORS.primary} />
+                        <Ionicons name='home-outline' size={28} color={COLORS.primary} />
                     </TouchableOpacity>
                 )}
 
