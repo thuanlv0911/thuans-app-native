@@ -46,6 +46,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (!isAuthenticated) {
             setCartItems([]);
             setCartTotal(0);
+            setSelectedItems(new Set());
             setIsLoading(false);
             return;
         }
@@ -67,6 +68,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
             setCartItems(mappedItems);
             setCartTotal(data.cart?.totalAmount || 0);
+            setSelectedItems((previousSelectedItems) => {
+                if (mappedItems.length === 0) {
+                    return new Set();
+                }
+
+                const availableIds = new Set(mappedItems.map((item) => item.id));
+                const nextSelectedItems = new Set(
+                    [...previousSelectedItems].filter((itemId) => availableIds.has(itemId))
+                );
+
+                if (previousSelectedItems.size === 0 && cartItems.length === 0) {
+                    return new Set(mappedItems.map((item) => item.id));
+                }
+
+                return nextSelectedItems;
+            });
         } catch (error) {
             Toast.show({
                 type: "error",
@@ -185,6 +202,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         setCartItems([]);
         setCartTotal(0);
+        setSelectedItems(new Set());
     }
     const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -214,10 +232,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         fetchCart();
     }, [isAuthenticated, user?.id])
-
-    useEffect(() => {
-        setSelectedItems(new Set(cartItems.map(item => item.id)));
-    }, [cartItems]);
 
     return (
         <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount, isLoading, selectedItems, toggleSelectItem, selectAll, clearSelection, selectedTotal, selectedCartItems, refreshCart: fetchCart }}>

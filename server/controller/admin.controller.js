@@ -48,6 +48,13 @@ const getOrders = async (req, res) => {
     }
 };
 
+const STATUS_FLOW = ["placed", "processing", "shipped", "delivered"];
+
+const isOrderFullyCompleted = (order) =>
+    order.orderStatus === "delivered" &&
+    order.paymentStatus === "paid" &&
+    Boolean(order.customerConfirmedAt);
+
 const updateOrderStatus = async (req, res) => {
     try {
         const { orderStatus } = req.body;
@@ -57,23 +64,64 @@ const updateOrderStatus = async (req, res) => {
             return res.status(400).json({ message: "Invalid order status" });
         }
 
-        const update = { orderStatus };
-
-        if (orderStatus === "delivered") {
-            update.deliveredAt = new Date();
-        } else {
-            update.deliveredAt = null;
-            update.customerConfirmedAt = null;
-        }
-
-        const order = await Order.findByIdAndUpdate(req.params.id, update, { new: true })
-            .populate("user", "name email role");
+        const order = await Order.findById(req.params.id);
 
         if (!order) {
             return res.status(404).json({ message: "Order not found" });
         }
 
-        return res.json({ order });
+        if (order.orderStatus === orderStatus) {
+            const populatedOrder = await order.populate("user", "name email role");
+            return res.json({ order: populatedOrder });
+        }
+
+        if (order.orderStatus === "cancelled") {
+            return res.status(400).json({ message: "Cancelled orders cannot be updated" });
+        }
+
+        if (isOrderFullyCompleted(order)) {
+            return res.status(400).json({
+                message: "Delivered orders that were paid and confirmed by the customer cannot be updated",
+            });
+        }
+
+        if (order.orderStatus === "delivered") {
+            return res.status(400).json({ message: "Delivered orders cannot be changed to another status" });
+        }
+
+        if (orderStatus === "cancelled") {
+            order.orderStatus = "cancelled";
+            await order.save();
+
+            const populatedOrder = await order.populate("user", "name email role");
+            return res.json({ order: populatedOrder });
+        }
+
+        const currentStatusIndex = STATUS_FLOW.indexOf(order.orderStatus);
+        const nextStatusIndex = STATUS_FLOW.indexOf(orderStatus);
+
+        if (currentStatusIndex === -1 || nextStatusIndex === -1) {
+            return res.status(400).json({ message: "This status transition is not allowed" });
+        }
+
+        if (nextStatusIndex < currentStatusIndex) {
+            return res.status(400).json({ message: "Order status cannot move back to a previous stage" });
+        }
+
+        if (nextStatusIndex > currentStatusIndex + 1) {
+            return res.status(400).json({ message: "Order status can only move to the next stage" });
+        }
+
+        order.orderStatus = orderStatus;
+
+        if (orderStatus === "delivered" && !order.deliveredAt) {
+            order.deliveredAt = new Date();
+        }
+
+        await order.save();
+
+        const populatedOrder = await order.populate("user", "name email role");
+        return res.json({ order: populatedOrder });
     } catch (error) {
         return res.status(500).json({ message: "Failed to update order status" });
     }
