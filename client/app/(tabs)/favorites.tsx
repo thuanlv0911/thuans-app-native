@@ -1,7 +1,7 @@
 import { COLORS } from '@/constants/theme';
 import AuthRequiredState from '@/src/components/AuthRequiredState';
 import Header from '@/src/components/Header';
-import MasonryList from '@/src/components/MasonryList';
+import ProductCard from '@/src/components/ProductCard';
 import { useAuth } from '@/src/context/AuthContext';
 import { useWishlist } from '@/src/context/WishlistContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -96,7 +96,13 @@ export default function Favorites() {
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={{ paddingBottom: 100, paddingTop: 8 }}
                     >
-                        <MasonryList products={wishlist} />
+                        <View className='flex-row flex-wrap justify-between'>
+                            {wishlist.map((product) => (
+                                <View key={product._id} className='w-[48%] mb-3'>
+                                    <ProductCard product={product} />
+                                </View>
+                            ))}
+                        </View>
                     </ScrollView>
 
                     {/* Bottom CTA */}

@@ -1,8 +1,7 @@
 import { CATEGORIES, COLORS } from '@/constants/theme';
-import BannerCarousel from '@/src/components/BannerCarousel';
 import CategoryItem from '@/src/components/CategoryItem';
 import Header from '@/src/components/Header';
-import MasonryList from '@/src/components/MasonryList';
+import ProductCard from '@/src/components/ProductCard';
 import { apiRequest } from '@/src/services/api';
 import { Product } from '@/src/types';
 import { useAuth } from '@/src/context/AuthContext';
@@ -123,10 +122,7 @@ export default function Home() {
           </View>
         </View>
 
-        {/* Banner Carousel */}
-        <View className='px-4'>
-          <BannerCarousel />
-        </View>
+
 
         {/* Categories */}
         <View className='mt-6'>
@@ -177,7 +173,13 @@ export default function Home() {
               <Text className='text-secondary mt-3'>No featured products</Text>
             </View>
           ) : (
-            <MasonryList products={featuredProducts} />
+            <View className='flex-row flex-wrap justify-between'>
+              {featuredProducts.map((product) => (
+                <View key={product._id} className='w-[48%] mb-3'>
+                  <ProductCard product={product} />
+                </View>
+              ))}
+            </View>
           )}
         </View>
 
@@ -206,7 +208,13 @@ export default function Home() {
               <Text className='text-secondary mt-3'>No new arrivals</Text>
             </View>
           ) : (
-            <MasonryList products={newArrivals} />
+            <View className='flex-row flex-wrap justify-between'>
+              {newArrivals.map((product) => (
+                <View key={product._id} className='w-[48%] mb-3'>
+                  <ProductCard product={product} />
+                </View>
+              ))}
+            </View>
           )}
         </View>
 

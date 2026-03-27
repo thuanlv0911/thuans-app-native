@@ -1,6 +1,6 @@
 import { COLORS } from '@/constants/theme';
 import Header from '@/src/components/Header';
-import MasonryList from '@/src/components/MasonryList';
+import ProductCard from '@/src/components/ProductCard';
 import { apiRequest } from '@/src/services/api';
 import { Product } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -248,7 +248,13 @@ export default function Shop() {
                     contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
                     showsVerticalScrollIndicator={false}
                 >
-                    <MasonryList products={products} />
+                    <View className='flex-row flex-wrap justify-between'>
+                        {products.map((product) => (
+                            <View key={product._id} className='w-[48%] mb-3'>
+                                <ProductCard product={product} />
+                            </View>
+                        ))}
+                    </View>
                     {renderPagination()}
                 </ScrollView>
             )}

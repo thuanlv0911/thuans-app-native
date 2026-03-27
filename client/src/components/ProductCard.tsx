@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import React, { useMemo, memo } from 'react'
+import React, { memo } from 'react'
 import { Image, Text, TouchableOpacity, View } from 'react-native'
 import { ProductCardProps } from '../types'
 import { useWishlist } from '../context/WishlistContext'
@@ -14,13 +14,6 @@ function ProductCard({ product }: ProductCardProps) {
     const router = useRouter();
     const isLiked = isInWishlist(product._id);
     const isOutOfStock = product.stock <= 0 || !product.isActive;
-
-    // Create varied heights for masonry effect based on product id
-    const imageHeight = useMemo(() => {
-        const hash = product._id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const heights = [180, 210, 240, 195, 225];
-        return heights[hash % heights.length];
-    }, [product._id]);
 
     const handleWishlistPress = async (e: any) => {
         e.stopPropagation();
@@ -51,7 +44,7 @@ function ProductCard({ product }: ProductCardProps) {
             onPress={() => router.push(`/product/${product._id}`)}
             activeOpacity={0.95}
         >
-            <View className='relative w-full' style={{ height: imageHeight }}>
+            <View className='relative w-full h-44'>
                 <Image 
                     source={{ uri: product.images?.[0] ?? '' }}
                     className='w-full h-full bg-gray-100' 
