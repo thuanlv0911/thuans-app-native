@@ -1,45 +1,46 @@
-import React from 'react';
-import { View, Dimensions } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { View } from 'react-native';
 import ProductCard from './ProductCard';
 import { Product } from '../types';
 
-const { width } = Dimensions.get('window');
-const COLUMN_GAP = 8;
-const PADDING = 16;
-const COLUMN_WIDTH = (width - PADDING * 2 - COLUMN_GAP) / 2;
-
 interface MasonryListProps {
     products: Product[];
+    numColumns?: number;
 }
 
-export default function MasonryList({ products }: MasonryListProps) {
-    // Split products into two columns for masonry effect
-    const leftColumn: Product[] = [];
-    const rightColumn: Product[] = [];
+export default function MasonryList({ products, numColumns = 2 }: MasonryListProps) {
+    // Optimized column distribution - balance heights better
+    const columns = useMemo(() => {
+        const cols: Product[][] = Array.from({ length: numColumns }, () => []);
+        const heights: number[] = Array(numColumns).fill(0);
 
-    products.forEach((product, index) => {
-        if (index % 2 === 0) {
-            leftColumn.push(product);
-        } else {
-            rightColumn.push(product);
-        }
-    });
+        products.forEach((product) => {
+            // Estimate height based on product id hash
+            const hash = product._id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const estimatedHeight = [180, 210, 240, 195, 225][hash % 5];
+            
+            // Find column with minimum height
+            const shortestColumn = heights.indexOf(Math.min(...heights));
+            cols[shortestColumn].push(product);
+            heights[shortestColumn] += estimatedHeight + 80; // Add padding for info section
+        });
+
+        return cols;
+    }, [products, numColumns]);
+
+    const renderColumn = useCallback((columnProducts: Product[], columnIndex: number) => (
+        <View key={columnIndex} style={{ flex: 1 }}>
+            {columnProducts.map((product) => (
+                <ProductCard key={product._id} product={product} />
+            ))}
+        </View>
+    ), []);
+
+    if (products.length === 0) return null;
 
     return (
-        <View className='flex-row' style={{ gap: COLUMN_GAP }}>
-            {/* Left Column */}
-            <View style={{ flex: 1 }}>
-                {leftColumn.map((product, index) => (
-                    <ProductCard key={product._id} product={product} index={index * 2} />
-                ))}
-            </View>
-
-            {/* Right Column */}
-            <View style={{ flex: 1 }}>
-                {rightColumn.map((product, index) => (
-                    <ProductCard key={product._id} product={product} index={index * 2 + 1} />
-                ))}
-            </View>
+        <View className='flex-row' style={{ gap: 10 }}>
+            {columns.map((col, index) => renderColumn(col, index))}
         </View>
     );
 }

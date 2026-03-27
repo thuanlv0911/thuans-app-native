@@ -1,22 +1,19 @@
 import { CATEGORIES } from '@/constants/theme';
+import BannerCarousel from '@/src/components/BannerCarousel';
 import CategoryItem from '@/src/components/CategoryItem';
 import Header from '@/src/components/Header';
 import MasonryList from '@/src/components/MasonryList';
-import { BANNERS } from '@/src/constants';
 import { apiRequest } from '@/src/services/api';
 import { Product } from '@/src/types';
 import { useAuth } from '@/src/context/AuthContext';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const { width } = Dimensions.get("window");
 
 export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
-  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,74 +67,39 @@ export default function Home() {
       <Header title='Nodaco' showMenu showCart showLogo />
 
       <ScrollView className='flex-1 px-4' showsVerticalScrollIndicator={false}>
-        <View className='bg-yellow-50 rounded-2xl p-5 mb-6 border border-yellow-100'>
-          <Text className='text-lg font-bold text-primary'>Hello{user?.name ? `, ${user.name}` : ''}!</Text>
-          <Text className='text-secondary mt-1'>Welcome back to your curated shop dashboard.</Text>
-        </View>
-        <View className='mb-6'>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            className='w-full h-48 rounded-xl'
-            scrollEventThrottle={16}
-            onScroll={(e) => {
-              const slide = Math.ceil(e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width);
-              if (slide !== activeBannerIndex) {
-                setActiveBannerIndex(slide);
-              }
-            }}
-          >
-            {BANNERS.map((banner, index) => (
-              <View key={index} className='relative w-full h-48 bg-gray-200 overflow-hidden' style={{ width: width - 32 }}>
-                <Image source={{ uri: banner.image }} className='w-full h-full' resizeMode='cover' />
-                <View className='absolute inset-0 bg-black/40' />
-
-                <View className='absolute bottom-4 left-4 z-10'>
-                  <Text className='text-white text-2xl font-bold'>{banner.title}</Text>
-                  <Text className='text-white text-sm font-medium'>{banner.subtitle}</Text>
-                  <TouchableOpacity className='mt-3 bg-white px-4 py-2 rounded-full self-start' onPress={() => router.push('/shop')}>
-                    <Text className='text-primary font-bold text-xs'>GET NOW</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-
-          <View className='flex-row justify-center mt-3 gap-2'>
-            {BANNERS.map((_, index) => (
-              <View key={index} className={`h-2 rounded-full ${index === activeBannerIndex ? 'w-6 bg-primary' : 'w-2 bg-gray-300'}`} />
-            ))}
+        {/* Welcome Section */}
+        <View className='flex-row items-center justify-between mb-5'>
+          <View>
+            <Text className='text-lg font-bold text-primary'>Hello{user?.name ? `, ${user.name}` : ''}!</Text>
+            <Text className='text-secondary text-sm'>Find your style today</Text>
           </View>
+          <TouchableOpacity 
+            className='bg-primary/10 p-2.5 rounded-full'
+            onPress={() => router.push('/shop')}
+          >
+            <Text className='text-primary text-xs font-semibold'>Explore</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Banner Carousel */}
+        <BannerCarousel />
 
 
 
         <View className='mb-6'>
           <View className='flex-row justify-between items-center mb-4'>
             <Text className='text-xl font-bold text-primary'>Categories</Text>
-            <TouchableOpacity onPress={() => router.push('/shop')}>
-              <Text className='text-secondary text-sm'>See All</Text>
-            </TouchableOpacity>
           </View>
-          <View className='bg-white rounded-2xl p-2' style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.04,
-            shadowRadius: 8,
-            elevation: 2,
-          }}>
-            <View className='flex-row flex-wrap'>
-              {categories.slice(0, 8).map((cat: any) => (
-                <CategoryItem
-                  key={cat.id}
-                  item={cat}
-                  isSelected={false}
-                  onPress={() => router.push({ pathname: "/shop", params: { category: cat.id === 'all' ? '' : cat.name } })}
-                />
-              ))}
-            </View>
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {categories.map((cat: any) => (
+              <CategoryItem
+                key={cat.id}
+                item={cat}
+                isSelected={false}
+                onPress={() => router.push({ pathname: "/shop", params: { category: cat.id === 'all' ? '' : cat.name } })}
+              />
+            ))}
+          </ScrollView>
         </View>
 
 
