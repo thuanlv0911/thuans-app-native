@@ -15,7 +15,7 @@ import Toast from 'react-native-toast-message';
 export default function Checkout() {
     const params = useLocalSearchParams<{ selectedAddressId?: string }>();
     const { isAuthenticated, token } = useAuth();
-    const { selectedCartItems, selectedTotal, refreshCart } = useCart();
+    const { selectedCartItems, selectedTotal, refreshCart, clearSelection } = useCart();
     const router = useRouter();
 
     const [loading, setLoading] = useState(false);
@@ -92,6 +92,7 @@ export default function Checkout() {
                 },
             });
 
+            clearSelection();
             await refreshCart();
 
             Toast.show({
