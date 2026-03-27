@@ -1,7 +1,7 @@
 import { CATEGORIES } from '@/constants/theme';
 import CategoryItem from '@/src/components/CategoryItem';
 import Header from '@/src/components/Header';
-import ProductCard from '@/src/components/ProductCard';
+import MasonryList from '@/src/components/MasonryList';
 import { BANNERS } from '@/src/constants';
 import { apiRequest } from '@/src/services/api';
 import { Product } from '@/src/types';
@@ -116,17 +116,28 @@ export default function Home() {
         <View className='mb-6'>
           <View className='flex-row justify-between items-center mb-4'>
             <Text className='text-xl font-bold text-primary'>Categories</Text>
+            <TouchableOpacity onPress={() => router.push('/shop')}>
+              <Text className='text-secondary text-sm'>See All</Text>
+            </TouchableOpacity>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {categories.map((cat: any) => (
-              <CategoryItem
-                key={cat.id}
-                item={cat}
-                isSelected={false}
-                onPress={() => router.push({ pathname: "/shop", params: { category: cat.id === 'all' ? '' : cat.name } })}
-              />
-            ))}
-          </ScrollView>
+          <View className='bg-white rounded-2xl p-2' style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.04,
+            shadowRadius: 8,
+            elevation: 2,
+          }}>
+            <View className='flex-row flex-wrap'>
+              {categories.slice(0, 8).map((cat: any) => (
+                <CategoryItem
+                  key={cat.id}
+                  item={cat}
+                  isSelected={false}
+                  onPress={() => router.push({ pathname: "/shop", params: { category: cat.id === 'all' ? '' : cat.name } })}
+                />
+              ))}
+            </View>
+          </View>
         </View>
 
 
@@ -143,11 +154,7 @@ export default function Home() {
           ) : featuredProducts.length === 0 ? (
             <Text className='text-secondary'>No featured products right now. Browse all.</Text>
           ) : (
-            <View className='flex-row flex-wrap justify-between'>
-              {featuredProducts.map((product) => (
-                <ProductCard key={product._id} product={product} />
-              ))}
-            </View>
+            <MasonryList products={featuredProducts} />
           )}
         </View>
 
@@ -163,11 +170,7 @@ export default function Home() {
           ) : newArrivals.length === 0 ? (
             <Text className='text-secondary'>No new arrivals for now. Check stock soon.</Text>
           ) : (
-            <View className='flex-row flex-wrap justify-between'>
-              {newArrivals.map((product) => (
-                <ProductCard key={product._id} product={product} />
-              ))}
-            </View>
+            <MasonryList products={newArrivals} />
           )}
         </View>
 
@@ -183,11 +186,7 @@ export default function Home() {
           ) : outOfStockProducts.length === 0 ? (
             <Text className='text-secondary'>No products are out of stock.</Text>
           ) : (
-            <View className='flex-row flex-wrap justify-between'>
-              {outOfStockProducts.map((product) => (
-                <ProductCard key={product._id} product={product} />
-              ))}
-            </View>
+            <MasonryList products={outOfStockProducts} />
           )}
         </View>
 

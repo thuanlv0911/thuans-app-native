@@ -1,6 +1,6 @@
 import { COLORS } from '@/constants/theme';
 import Header from '@/src/components/Header';
-import ProductCard from '@/src/components/ProductCard';
+import MasonryList from '@/src/components/MasonryList';
 import { apiRequest } from '@/src/services/api';
 import { Product } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,8 +8,8 @@ import { useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
-    FlatList,
     Modal,
+    ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
@@ -236,21 +236,21 @@ export default function Shop() {
                 <View className='flex-1 justify-center items-center'>
                     <ActivityIndicator size="large" color={COLORS.primary} />
                 </View>
+            ) : products.length === 0 ? (
+                <View className='flex-1 items-center justify-center py-20'>
+                    <Ionicons name='search-outline' size={48} color={COLORS.secondary} />
+                    <Text className='text-secondary mt-4'>No products found</Text>
+                    <Text className='text-secondary text-sm mt-1'>Try adjusting your filters</Text>
+                </View>
             ) : (
-                <FlatList
-                    data={products}
-                    keyExtractor={(item) => item._id}
-                    numColumns={2}
+                <ScrollView 
+                    className='flex-1' 
                     contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-                    columnWrapperStyle={{ justifyContent: 'space-between' }}
-                    renderItem={({ item }) => <ProductCard product={item} />}
-                    ListEmptyComponent={
-                        <View className='flex-1 items-center justify-center py-20 w-full'>
-                            <Text className='text-secondary'>No products found</Text>
-                        </View>
-                    }
-                    ListFooterComponent={renderPagination}
-                />
+                    showsVerticalScrollIndicator={false}
+                >
+                    <MasonryList products={products} />
+                    {renderPagination()}
+                </ScrollView>
             )}
 
             <Modal visible={filterModalVisible} animationType='slide' transparent>
