@@ -2,13 +2,18 @@ const Order = require("../models/order.model");
 const Product = require("../models/product.model");
 const User = require("../models/user.model");
 
+const ACTIVE_REVENUE_ORDER_FILTER = { orderStatus: { $ne: "cancelled" } };
+
 const getDashboard = async (req, res) => {
     try {
         const [totalUsers, totalProducts, totalOrders, revenueResult, recentOrders] = await Promise.all([
-            User.countDocuments(),
+            User.countDocuments({ role: "user" }),
             Product.countDocuments(),
             Order.countDocuments(),
             Order.aggregate([
+                {
+                    $match: ACTIVE_REVENUE_ORDER_FILTER,
+                },
                 {
                     $group: {
                         _id: null,
