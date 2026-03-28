@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get("window");
 
@@ -191,12 +192,41 @@ export default function Home() {
           )}
         </View>
 
-        <View className='bg-gray-100 p-6 rounded-2xl mb-20 items-center'>
+        {/* <View className='bg-gray-100 p-6 rounded-2xl mb-20 items-center'>
           <Text className='text-2xl font-bold text-primary mb-2 text-center'>Join in Revolution</Text>
           <Text className='text-secondary text-center mb-4'>Subscribe to our newsletter and get 10% off your first purchase.</Text>
           <TouchableOpacity onPress={() => router.push("/sign-up")} className='bg-primary w-4/5 py-3 rounded-full items-center'>
             <Text className='text-white font-medium text-base'>Register Now</Text>
           </TouchableOpacity>
+        </View> */}
+        <View className='mx-4 mt-8 mb-24'>
+          <View
+            className='bg-primary rounded-3xl p-6 overflow-hidden'
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 6,
+            }}
+          >
+            <View className='flex-row items-center mb-3'>
+              <View className='w-10 h-10 bg-white/20 rounded-full items-center justify-center mr-3'>
+                <Ionicons name='gift-outline' size={20} color='#FFF' />
+              </View>
+              <Text className='text-white/80 text-sm font-medium'>Special Offer</Text>
+            </View>
+            <Text className='text-white text-2xl font-bold mb-2'>Get 10% Off</Text>
+            <Text className='text-white/70 text-sm mb-5'>
+              Join our newsletter and receive exclusive deals and updates.
+            </Text>
+            <TouchableOpacity
+              className='bg-white py-3.5 rounded-full items-center'
+              onPress={() => router.push('/')}
+            >
+              <Text className='text-primary font-bold text-base'>Join Now</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
