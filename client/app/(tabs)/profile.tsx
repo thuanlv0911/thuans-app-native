@@ -155,7 +155,7 @@ export default function Profile() {
                         onPress={handleSignOut}
                     >
                         <Ionicons name='log-out-outline' size={22} color='#EF4444' />
-                        <Text className='text-red-500 font-bold text-base ml-2'>Sign Out</Text>
+                        <Text className='text-red-500 font-bold text-base ml-2'>Logout</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>

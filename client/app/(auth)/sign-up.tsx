@@ -7,6 +7,8 @@ import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from "reac
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function SignUp() {
     const router = useRouter();
     const { signUp } = useAuth();
@@ -19,6 +21,10 @@ export default function SignUp() {
     const handleSubmit = async () => {
         if (!name.trim() || !email.trim() || !password.trim()) {
             Toast.show({ type: "error", text1: "Missing information", text2: "Please fill in your full name, email, and password." }); return;
+        }
+
+        if (!EMAIL_REGEX.test(email.trim())) {
+            Toast.show({ type: "error", text1: "Invalid email", text2: "Please enter a valid email address." }); return;
         }
 
         if (password !== confirmPassword) {

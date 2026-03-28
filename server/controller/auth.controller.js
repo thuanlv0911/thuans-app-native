@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const signToken = (user) => {
     const jwtSecret = process.env.JWT_SECRET || process.env.AUTH_SECRET || "dev-jwt-secret";
 
@@ -37,6 +39,11 @@ const register = async (req, res) => {
         }
 
         const normalizedEmail = String(email).trim().toLowerCase();
+
+        if (!EMAIL_REGEX.test(normalizedEmail)) {
+            return res.status(400).json({ message: "Please provide a valid email address" });
+        }
+
         const existingUser = await User.findOne({ email: normalizedEmail });
 
         if (existingUser) {
