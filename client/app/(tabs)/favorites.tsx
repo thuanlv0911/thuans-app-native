@@ -39,6 +39,30 @@ export default function Favorites() {
                     </TouchableOpacity>
                 </View>
             )}
+            <View
+                className='absolute bottom-0 left-0 right-0 bg-white px-4 py-4 border-t border-gray-100'
+                style={{
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: -2 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 8,
+                    elevation: 4,
+                }}
+            >
+                <TouchableOpacity
+                    className='py-4 rounded-full items-center bg-primary'
+                    style={{
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 12,
+                        elevation: 4,
+                    }}
+                    onPress={() => router.push('/shop')}
+                >
+                    <Text className='text-white font-bold text-base ml-2'>Continue Shopping</Text>
+                </TouchableOpacity>
+            </View>
         </SafeAreaView>
     )
 }

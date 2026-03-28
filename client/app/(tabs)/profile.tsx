@@ -121,7 +121,7 @@ export default function Profile() {
                         </View>
                     ) : (
                         <>
-                            <Text className="text-2xl font-bold text-primary">{user.name || 'User'}</Text>
+                            <Text className="text-4xl font-bold text-primary">{user.name || 'User'}</Text>
                             <Text className="text-secondary text-base mt-1">Email: {user.email}</Text>
                             <TouchableOpacity onPress={() => setIsEditingName(true)} className="mt-3 bg-primary px-6 py-2 rounded-full">
                                 <Text className="text-white font-semibold">Edit Name</Text>
@@ -148,13 +148,16 @@ export default function Profile() {
                     ))}
                 </View>
 
-                <TouchableOpacity
-                    className="flex-row items-center justify-center p-5 bg-white rounded-2xl shadow-sm"
-                    onPress={handleSignOut}
-                >
-                    <Ionicons name="log-out-outline" size={24} color="#ef4444" />
-                    <Text className="text-red-500 font-bold text-lg ml-3">Logout</Text>
-                </TouchableOpacity>
+
+                <View className='mx-4 mt-6'>
+                    <TouchableOpacity
+                        className='flex-row items-center justify-center p-4 bg-red-50 rounded-2xl'
+                        onPress={handleSignOut}
+                    >
+                        <Ionicons name='log-out-outline' size={22} color='#EF4444' />
+                        <Text className='text-red-500 font-bold text-base ml-2'>Sign Out</Text>
+                    </TouchableOpacity>
+                </View>
             </ScrollView>
         </SafeAreaView>
     );
